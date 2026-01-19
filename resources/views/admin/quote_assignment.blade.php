@@ -56,23 +56,17 @@ th, td { text-align:center; vertical-align: middle; word-break: break-word; }
               <td>{{ $req['phone'] ?? '' }}</td>
               <td id="status-{{ $id }}">{{ $req['status'] ?? 'pending' }}</td>
               <td>
-                <form class="assign-form" data-id="{{ $id }}"
-                      style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+                <form class="assign-form" data-id="{{ $id }}" style="display:flex; gap:8px; justify-content:center; flex-wrap: wrap;">
                   @csrf
-
-                  <input type="text" name="assigned_to"
-                         placeholder="Staff name..."
-                         required
-                         style="padding:6px 8px; border-radius:5px; border:1px solid #dde3ec;">
-
+                  <input type="text" name="assigned_to" placeholder="Staff name..." required style="padding:6px 8px; border-radius:5px; border:1px solid #dde3ec;">
                   <button type="submit" class="btn btn-primary">Assign</button>
 
                   <div class="assign-success" id="assign-success-{{ $id }}">
-                    Assigned successfully! 
+                    Assigned successfully!
                   </div>
 
                   <div class="assign-error" id="assign-error-{{ $id }}">
-                    Assigned successfully but email failed.
+                    Failed to send email. Assigned anyway.
                   </div>
                 </form>
               </td>
@@ -101,48 +95,44 @@ document.addEventListener('DOMContentLoaded', function () {
             const errorDiv = document.getElementById(`assign-error-${id}`);
             const csrfToken = this.querySelector('input[name="_token"]').value;
 
-            const formData = new FormData();
-            formData.append('assigned_to', input.value);
-
             successDiv.style.display = 'none';
             errorDiv.style.display = 'none';
+
+            const formData = new FormData();
+            formData.append('assigned_to', input.value);
 
             try {
                 const response = await fetch(`/admin/quote-requests/${id}/assign`, {
                     method: 'POST',
-                    headers: {
+                    headers: { 
                         'X-CSRF-TOKEN': csrfToken,
                         'Accept': 'application/json'
                     },
                     body: formData
                 });
 
-                const contentType = response.headers.get('content-type');
-
-                if (!contentType || !contentType.includes('application/json')) {
-                    const text = await response.text();
-                    throw new Error('Invalid server response: ' + text);
-                }
-
                 const result = await response.json();
 
                 if (result.success) {
                     document.getElementById(`status-${id}`).textContent = 'assigned';
                     successDiv.style.display = 'block';
-
                     input.value = '';
 
+                    // Remove row after 2s
                     setTimeout(() => {
                         const row = document.getElementById(`quote-row-${id}`);
                         if (row) row.remove();
                     }, 2000);
+
                 } else {
                     alert(result.error || 'Failed to assign staff.');
+                    errorDiv.style.display = 'block';
                 }
 
             } catch (error) {
-                console.error('Assignment error:', error);
-                alert('Assignment failed. Please check the console.');
+                console.error('Error submitting assignment:', error);
+                alert('An error occurred. Please try again.');
+                errorDiv.style.display = 'block';
             }
         });
     });
