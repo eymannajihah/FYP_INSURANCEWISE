@@ -66,12 +66,13 @@ class RecommendationController extends Controller
         }
     }
     break;
-
-
         case 'savings':
         case 'protection':
-            $plans['Life'][] = 'PRUWith You Plus';
-            break;
+    if ($data['salary'] >= 2500 && $data['budget'] !== 'low') {
+        $plans['Life'][] = 'PRUWith You Plus';
+    }
+    break;
+
     }
 
     // ===== Gender-Based Add-On for Critical Care =====
