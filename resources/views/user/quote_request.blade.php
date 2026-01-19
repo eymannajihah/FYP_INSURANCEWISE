@@ -6,12 +6,12 @@
 /* ===== Page Background ===== */
 body {
     font-family: 'Poppins', sans-serif;
-    background-image: url("/image/requestform.jpeg");
+    background-image: url("/image/requestform.jpeg"); /* relative path avoids HTTP/HTTPS issues */
     background-repeat: no-repeat;
     background-position: center center;
     background-size: cover;
     margin: 0;
-    padding-top: 80px;
+    padding-top: 80px; /* push content below navbar */
 }
 
 /* ===== Form Section ===== */
@@ -76,16 +76,10 @@ input:focus {
     background-color: #b71c1c;
 }
 
-/* ===== Messages ===== */
+/* ===== Success Message ===== */
 .success-message {
     margin-top: 15px;
     color: green;
-    text-align: center;
-    display: none;
-}
-.error-message {
-    margin-top: 15px;
-    color: red;
     text-align: center;
     display: none;
 }
@@ -114,9 +108,7 @@ input:focus {
             <input type="text" id="phone" name="phone" placeholder="Your phone number..." required>
 
             <button type="submit" class="btn-submit">Send Request</button>
-
             <p class="success-message" id="successMessage">Request sent successfully!</p>
-            <p class="error-message" id="errorMessage"></p>
         </form>
     </div>
 </div>
@@ -125,47 +117,34 @@ input:focus {
 document.getElementById('contactForm').addEventListener('submit', async function(e) {
     e.preventDefault();
 
-    const form = this;
-    const formData = new FormData(form);
-    const submitBtn = form.querySelector('button[type="submit"]');
-    const successMessage = document.getElementById('successMessage');
-    const errorMessage = document.getElementById('errorMessage');
-
-    // Clear previous messages
-    successMessage.style.display = 'none';
-    errorMessage.style.display = 'none';
-    submitBtn.disabled = true;
+    const formData = new FormData(this);
 
     try {
-        const response = await fetch(form.action, {
+        // Use relative URL from form action
+        const response = await fetch(this.action, {
             method: 'POST',
             headers: {
-                'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
-                'Accept': 'application/json'
+                'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value
             },
             body: formData
         });
 
-        const result = await response.json().catch(() => ({ success: false, error: 'Server error' }));
+        // Check for HTTP errors
+        if (!response.ok) throw new Error('Server error: ' + response.status);
+
+        // Parse JSON safely
+        const result = await response.json().catch(() => ({ success: false, error: 'Server returned invalid JSON' }));
 
         if (result.success) {
-            successMessage.style.display = 'block';
-            form.reset();
+            document.getElementById('successMessage').style.display = 'block';
+            this.reset();
         } else {
-            if (result.errors) {
-                // Show first validation error
-                errorMessage.textContent = Object.values(result.errors)[0];
-            } else {
-                errorMessage.textContent = result.error || 'Something went wrong!';
-            }
-            errorMessage.style.display = 'block';
+            alert(result.error || 'Something went wrong!');
         }
+
     } catch (error) {
         console.error('Error submitting form:', error);
-        errorMessage.textContent = 'An error occurred. Please try again.';
-        errorMessage.style.display = 'block';
-    } finally {
-        submitBtn.disabled = false;
+        alert('An error occurred. Please try again.');
     }
 });
 </script>
