@@ -98,30 +98,36 @@ class QuoteRequestController extends Controller
         ], 404);
     }
 
-    // 1️⃣ Update Firebase FIRST
+    // 🔹 Assignment is ALWAYS the priority
     $ref->update([
         'assigned_to' => $request->assigned_to,
         'status'      => 'assigned',
         'assigned_at' => now()->toDateTimeString(),
+        'updated_at'  => now()->toDateTimeString(),
     ]);
 
-    // 2️⃣ Return response IMMEDIATELY (NO WAITING)
-    response()->json(['success' => true])->send();
-
-    // 3️⃣ Send email AFTER response (non-blocking)
+    // 🔹 Email is OPTIONAL — never fail assignment
     try {
-        Mail::to($quote['email'])->queue(
+        Mail::to($quote['email'])->send(
             new QuoteAssignedMail(
                 $quote['name'],
                 $quote['phone'],
                 $request->assigned_to
             )
         );
-    } catch (\Throwable $e) {
-        Log::error('Email failed: '.$e->getMessage());
+    } catch (\Exception $e) {
+        Log::warning('Email failed but assignment succeeded', [
+            'quote_id' => $id,
+            'email' => $quote['email'],
+            'error' => $e->getMessage(),
+        ]);
     }
 
-    return; // IMPORTANT
+    // ✅ ALWAYS return success
+    return response()->json([
+        'success' => true,
+        'message' => 'Assigned successfully'
+    ]);
 }
 
     // Delete (archive) assigned quote
