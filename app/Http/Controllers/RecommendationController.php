@@ -83,12 +83,13 @@ class RecommendationController extends Controller
     
 // ===== Health & Long-term Income Protection =====
 if (
-    in_array($data['goal'], ['protection', 'savings']) &&
-    $data['health_status'] !== 'good' &&
-    $data['salary'] >= 3000 &&
-    $data['coverage'] === 'lifetime'
+    in_array($data['goal'], ['protection', 'savings']) && // User wants protection or savings
+    $data['health_status'] !== 'good' &&                  // Health is not perfect
+    $data['salary'] >= 3000 &&                            // Salary sufficient
+    $data['coverage'] === 'lifetime'                      // Wants lifetime coverage
 ) {
-    $plans['Life'][] = 'PRULive Well';
+    // Add PRULive Well at the beginning of Life plans to make it most recommended
+    array_unshift($plans['Life'], 'PRULive Well');
 }
 
     // ===== Remove duplicates =====
