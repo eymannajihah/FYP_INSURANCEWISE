@@ -2,13 +2,11 @@
 
 @section('content')
 
-
-
 <style>
 /* ===== Page Background ===== */
 body {
     font-family: 'Poppins', sans-serif;
-     background-image: url("{{ asset('image/requestform.jpeg') }}");
+    background-image: url("/image/requestform.jpeg"); /* Use relative path */
     background-repeat: no-repeat;
     background-position: center center;
     background-size: cover;
@@ -94,12 +92,11 @@ input:focus {
 }
 </style>
 
-
 <!-- Form Section -->
 <div class="contact-section">
     <div class="contact-container">
         <h2>Get Your Quote</h2>
-        <form id="contactForm">
+        <form id="contactForm" action="{{ route('quote.submit') }}" method="POST">
             @csrf
             <label for="name">Full Name</label>
             <input type="text" id="name" name="name" placeholder="Your name..." required>
@@ -116,17 +113,17 @@ input:focus {
     </div>
 </div>
 
-
 <script>
 document.getElementById('contactForm').addEventListener('submit', async function(e) {
     e.preventDefault();
+
     const formData = new FormData(this);
 
     try {
-        const response = await fetch("{{ route('quote.submit') }}", {
+        const response = await fetch(this.action, { // <-- use form action
             method: 'POST',
             headers: {
-                'X-CSRF-TOKEN': "{{ csrf_token() }}"
+                'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value
             },
             body: formData
         });
@@ -137,7 +134,7 @@ document.getElementById('contactForm').addEventListener('submit', async function
             document.getElementById('successMessage').style.display = 'block';
             this.reset();
         } else {
-            alert(result.message || 'Something went wrong!');
+            alert(result.error || 'Something went wrong!');
         }
     } catch (error) {
         console.error('Error submitting form:', error);
