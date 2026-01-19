@@ -141,22 +141,28 @@ public function assigned()
 // Admin: assign staff to a quote request
 public function assign(Request $request, $id)
 {
+    // Validate input
     $request->validate([
         'assigned_to' => 'required|string|max:255',
     ]);
 
+    // Get the quote from Firebase
     $ref = $this->database->getReference("quote_requests/{$id}");
     $quote = $ref->getValue();
 
     if (!$quote) {
-        return response()->json(['success' => false, 'error' => 'Quote request not found']);
+        return response()->json([
+            'success' => false,
+            'error' => 'Quote request not found.'
+        ], 404);
     }
 
+    // Update assignment + status in Firebase
     $ref->update([
         'assigned_to' => $request->assigned_to,
-        'status' => 'assigned',
+        'status'      => 'assigned',
         'assigned_at' => now()->toDateTimeString(),
-        'updated_at' => now()->toDateTimeString(),
+        'updated_at'  => now()->toDateTimeString(),
     ]);
 
     // Send email to user
@@ -167,11 +173,11 @@ public function assign(Request $request, $id)
             $request->assigned_to
         ));
     } catch (\Exception $e) {
-        // Log or handle email sending error
-        Log::error("Failed to send quote assignment email: ".$e->getMessage());
+        // Log error but still return success to AJAX
+        Log::error('Failed to send quote assigned email: '.$e->getMessage());
     }
 
+    // Return JSON for AJAX
     return response()->json(['success' => true]);
 }
-
 }
