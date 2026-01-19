@@ -3,11 +3,11 @@
 @section('content')
 
 <style>
-  /* Full-page background */
+  /* Full-page background for quote assignment */
   .quote-page-background {
     min-height: calc(100vh - 70px);
     padding: 80px 0;
-    background-image: url("/image/requestform.jpeg"); /* relative path */
+    background-image: url("/image/requestform.jpeg"); /* relative path avoids HTTP/HTTPS issues */
     background-repeat: no-repeat;
     background-position: center center;
     background-size: cover;
@@ -68,6 +68,7 @@
             <th style="width: 30%;">Assign To</th>
           </tr>
         </thead>
+
         <tbody>
           @forelse($requests as $id => $req)
             <tr id="quote-row-{{ $id }}">
@@ -76,6 +77,7 @@
               <td>{{ $req['phone'] ?? '' }}</td>
               <td id="status-{{ $id }}">{{ $req['status'] ?? 'pending' }}</td>
               <td>
+                <!-- AJAX Form -->
                 <form class="assign-form" data-id="{{ $id }}" style="display:flex; gap:8px; justify-content:center; flex-wrap: wrap;">
                   @csrf
                   <input type="text" name="assigned_to" placeholder="Staff name..." required
@@ -98,45 +100,45 @@
 </div>
 
 <script>
-document.querySelectorAll('.assign-form').forEach(form => {
-    form.addEventListener('submit', async function(e) {
-        e.preventDefault();
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.assign-form').forEach(form => {
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
 
-        const id = this.dataset.id;
-        const input = this.querySelector('input[name="assigned_to"]');
-        const csrfToken = this.querySelector('input[name="_token"]').value;
-        const successDiv = document.getElementById(`assign-success-${id}`);
+            const id = this.dataset.id;
+            const input = this.querySelector('input[name="assigned_to"]');
+            const successDiv = document.getElementById(`assign-success-${id}`);
+            const csrfToken = this.querySelector('input[name="_token"]').value;
 
-        const formData = new FormData();
-        formData.append('assigned_to', input.value);
+            const formData = new FormData();
+            formData.append('assigned_to', input.value);
 
-        try {
-            // Use relative URL to avoid HTTP/HTTPS mixed content issues
-            const response = await fetch(`/admin/quote-requests/${id}/assign`, {
-                method: 'POST',
-                headers: {
-                    'X-CSRF-TOKEN': csrfToken,
-                    'Accept': 'application/json'
-                },
-                body: formData
-            });
+            try {
+                const response = await fetch(`/admin/quote-requests/${id}/assign`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken
+                    },
+                    body: formData
+                });
 
-            // parse JSON
-            const result = await response.json();
+                // Parse JSON safely
+                const result = await response.json().catch(() => ({ success: false, error: 'Server error' }));
 
-            if (result.success) {
-                successDiv.style.display = 'block';
-                document.getElementById(`status-${id}`).textContent = 'assigned';
-                input.value = '';
-                setTimeout(() => { successDiv.style.display = 'none'; }, 3000);
-            } else {
-                alert(result.error || 'Failed to assign staff.');
+                if (result.success) {
+                    // Show success message & update status
+                    successDiv.style.display = 'block';
+                    document.getElementById(`status-${id}`).textContent = 'assigned';
+                    input.value = '';
+                    setTimeout(() => { successDiv.style.display = 'none'; }, 3000);
+                } else {
+                    alert(result.error || 'Failed to assign staff.');
+                }
+            } catch (error) {
+                console.error('Error assigning staff:', error);
+                alert('An error occurred. Please try again.');
             }
-
-        } catch (error) {
-            console.error('Error assigning staff:', error);
-            alert('An error occurred. Please try again.');
-        }
+        });
     });
 });
 </script>
