@@ -13,20 +13,17 @@ class QuoteAssignedMail extends Mailable
     public $name;
     public $phone;
     public $assignedTo;
-    public $email; // ✅ declare the property
 
-    public function __construct($name, $phone, $assignedTo, $email)
+    public function __construct($name, $phone, $assignedTo)
     {
-        $this->name       = $name;
-        $this->phone      = $phone;
+        $this->name = $name;
+        $this->phone = $phone;
         $this->assignedTo = $assignedTo;
-        $this->email      = $email; // assign it
     }
 
     public function build()
     {
-        return $this->to($this->email) // ✅ send to this email
-                    ->subject('Your Insurance Quote Request Has Been Assigned')
+        return $this->subject('Your Insurance Quote Has Been Assigned')
                     ->view('emails.quote_assigned');
     }
 }
