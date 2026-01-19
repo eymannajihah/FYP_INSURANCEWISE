@@ -82,7 +82,7 @@ class QuoteRequestController extends Controller
     }
 
     // Assign staff to a quote (AJAX POST)
-  public function assign(Request $request, $id)
+ public function assign(Request $request, $id)
 {
     $request->validate([
         'assigned_to' => 'required|string|max:255',
@@ -106,10 +106,10 @@ class QuoteRequestController extends Controller
         'updated_at'  => now()->toDateTimeString(),
     ]);
 
-    // Send email safely
+    // Send email via Gmail SMTP
     try {
         Mail::to($quote['email'])->send(
-            new QuoteAssignedMail(
+            new \App\Mail\QuoteAssignedMail(
                 $quote['name'],
                 $quote['phone'],
                 $request->assigned_to
@@ -125,9 +125,10 @@ class QuoteRequestController extends Controller
 
     return response()->json([
         'success' => true,
-        'message' => 'Staff assigned successfully and email sent (if sandbox allows)'
+        'message' => 'Staff assigned successfully and email sent.'
     ]);
 }
+
     // Delete (archive) assigned quote
     public function destroy($id)
     {

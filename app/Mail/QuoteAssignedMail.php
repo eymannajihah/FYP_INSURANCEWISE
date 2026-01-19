@@ -24,11 +24,6 @@ class QuoteAssignedMail extends Mailable
     public function build()
     {
         return $this->subject('Your Insurance Quote Request Has Been Assigned')
-                    ->view('emails.quote_assigned')
-                    ->with([
-                        'name'       => $this->name,
-                        'phone'      => $this->phone,
-                        'assignedTo' => $this->assignedTo,
-                    ]);
+                    ->view('emails.quote_assigned');
     }
 }
