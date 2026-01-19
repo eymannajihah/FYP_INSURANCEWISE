@@ -50,17 +50,23 @@ class QuoteRequestController extends Controller
 
     // Pending quotes page
     public function index()
-    {
-        $allRequests = $this->database->getReference('quote_requests')->getValue() ?? [];
+{
+    $allRequests = $this->database
+        ->getReference('quote_requests')
+        ->getValue() ?? [];
 
-        $requests = collect($allRequests)
-            ->reject(fn($item) => ($item['status'] ?? '') === 'deleted')
-            ->filter(fn($item) => empty($item['assigned_to']))
-            ->sortByDesc('created_at')
-            ->toArray();
+    $requests = collect($allRequests)
+        ->reject(fn ($item) => ($item['status'] ?? '') === 'deleted')
+        ->filter(fn ($item) =>
+            empty($item['assigned_to']) &&
+            ($item['status'] ?? '') !== 'assigned'
+        )
+        ->sortByDesc('created_at')
+        ->toArray();
 
-        return view('admin.quote_assignment', compact('requests'));
-    }
+    return view('admin.quote_assignment', compact('requests'));
+}
+
 
     // Assigned quotes page
     public function assigned()
