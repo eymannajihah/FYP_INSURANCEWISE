@@ -82,13 +82,12 @@ class QuoteRequestController extends Controller
     }
 
     // Assign staff to a quote (AJAX POST)
-    public function assign(Request $request, $id)
+  public function assign(Request $request, $id)
 {
     $request->validate([
         'assigned_to' => 'required|string|max:255',
     ]);
 
-    // 1️⃣ Reference the Firebase quote
     $ref = $this->database->getReference("quote_requests/{$id}");
     $quote = $ref->getValue();
 
@@ -99,7 +98,7 @@ class QuoteRequestController extends Controller
         ], 404);
     }
 
-    // 2️⃣ Update Firebase first (guaranteed)
+    // Update Firebase first
     $ref->update([
         'assigned_to' => $request->assigned_to,
         'status'      => 'assigned',
@@ -107,7 +106,7 @@ class QuoteRequestController extends Controller
         'updated_at'  => now()->toDateTimeString(),
     ]);
 
-    // 3️⃣ Send email safely via Mailgun
+    // Send email safely
     try {
         Mail::to($quote['email'])->send(
             new QuoteAssignedMail(
@@ -126,7 +125,7 @@ class QuoteRequestController extends Controller
 
     return response()->json([
         'success' => true,
-        'message' => 'Staff assigned successfully and email sent (if no errors)'
+        'message' => 'Staff assigned successfully and email sent (if sandbox allows)'
     ]);
 }
     // Delete (archive) assigned quote
