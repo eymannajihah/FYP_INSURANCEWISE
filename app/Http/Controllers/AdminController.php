@@ -340,34 +340,4 @@ public function editPlan(Request $request, $id)
         return redirect()->route('admin.manage-plans')->with('success', 'Plan deleted successfully!');
     }
 
-    public function assignQuote(Request $request, $id)
-{
-    $request->validate([
-        'assigned_to' => 'required|string'
-    ]);
-
-    // Get quote request from Firebase
-    $quoteRef = $this->database->getReference("quote_requests/{$id}");
-    $quote = $quoteRef->getValue();
-
-    if (!$quote) {
-        return redirect()->back()->withErrors(['not_found' => 'Quote request not found.']);
-    }
-
-    // Update assignment + status
-    $quoteRef->update([
-        'assigned_to' => $request->assigned_to,
-        'status' => 'assigned'
-    ]);
-
-    // ✅ Send email to user
-    Mail::to($quote['email'])->send(new QuoteAssignedMail(
-        $quote['name'],
-        $quote['phone'],
-        $request->assigned_to
-    ));
-
-    return redirect()->back()->with('success', 'Staff assigned and email sent to user.');
-}
-
 }
