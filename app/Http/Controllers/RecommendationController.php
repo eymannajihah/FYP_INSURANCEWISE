@@ -36,52 +36,50 @@ class RecommendationController extends Controller
         'Life' => [],
     ];
 
-    // ===== First Layer: Budget & Salary =====
-    if ($data['salary'] < 2500 || $data['budget'] === 'low') {
-        $plans['Life'][] = 'PRUTerm';
-    } elseif ($data['budget'] === 'medium' && $data['salary'] < 5000) {
-        $plans['Life'][] = 'PRUWith You Plus';
-    } elseif ($data['budget'] === 'high' && $data['salary'] >= 5000) {
-        $plans['Life'][] = 'PRUWith You Plus';
-    }
+    // ===== First Layer: Budget & Salary (PRUTerm & PRUWith You Plus) =====
+if ($data['salary'] < 2500 || $data['budget'] === 'low') {
+    $plans['Life'][] = 'PRUTerm';
+} elseif ($data['budget'] === 'medium' && $data['salary'] < 5000) {
+    $plans['Life'][] = 'PRUWith You Plus';
+} elseif ($data['budget'] === 'high' && $data['salary'] >= 5000) {
+    $plans['Life'][] = 'PRUWith You Plus';
+}
 
-    // ===== Second Layer: Goal =====
-    switch ($data['goal']) {
-        case 'critical_illness':
-            $plans['Critical'][] = 'PRUMy Critical Care';
-            break;
+// ===== Second Layer: Goal =====
+switch ($data['goal']) {
+    case 'critical_illness':
+        $plans['Critical'][] = 'PRUMy Critical Care';
+        break;
 
-        case 'medical':
-    // ===== Medical Goal Handling =====
-    if ($data['lifestyle'] === 'active') {
-        // Most suitable for active lifestyle
-        $plans['Medical'] = ['PRUMillion Med Active'];
-    } else {
-        // Default medical plan
-        $plans['Medical'][] = 'PRUMillion Med';
-        
-        // Long-term coverage adjustment
-        if ($data['coverage'] === 'lifetime' && $data['salary'] >= 3000) {
-            $plans['Medical'][] = 'PRUValue Med';
+    case 'medical':
+        // ===== Medical Goal Handling =====
+        if ($data['lifestyle'] === 'active') {
+            $plans['Medical'] = ['PRUMillion Med Active'];
+        } else {
+            $plans['Medical'][] = 'PRUMillion Med';
+            
+            // Long-term coverage adjustment
+            if ($data['coverage'] === 'lifetime' && $data['salary'] >= 3000) {
+                $plans['Medical'][] = 'PRUValue Med';
+            }
         }
-    }
-    break;
-        case 'savings':
-        case 'protection':
-    if ($data['salary'] >= 2500 && $data['budget'] !== 'low') {
-        $plans['Life'][] = 'PRUWith You Plus';
-    }
-    break;
+        break;
 
-    }
+    case 'savings':
+    case 'protection':
+        if ($data['salary'] >= 2500 && $data['budget'] !== 'low') {
+            $plans['Life'][] = 'PRUWith You Plus';
+        }
+        break;
+}
 
-    // ===== Gender-Based Add-On for Critical Care =====
-    if (in_array('PRUMy Critical Care', $plans['Critical'])) {
-        if ($data['gender'] === 'female') $plans['Critical'][] = 'PRULady';
-        if ($data['gender'] === 'male') $plans['Critical'][] = 'PRUMan';
-    }
-    
-// ===== Health & Long-term Income Protection =====
+// ===== Gender-Based Add-On for Critical Care =====
+if (in_array('PRUMy Critical Care', $plans['Critical'])) {
+    if ($data['gender'] === 'female') $plans['Critical'][] = 'PRULady';
+    if ($data['gender'] === 'male') $plans['Critical'][] = 'PRUMan';
+}
+
+// ===== Health & Long-term Income Protection (PRULive Well) =====
 if (
     in_array($data['goal'], ['protection', 'savings']) && // User wants protection or savings
     $data['health_status'] !== 'good' &&                  // Health is not perfect
@@ -92,19 +90,20 @@ if (
     array_unshift($plans['Life'], 'PRULive Well');
 }
 
-    // ===== Remove duplicates =====
-    foreach ($plans as $category => $list) {
-        $plans[$category] = array_unique($list);
-    }
+// ===== Remove duplicates =====
+foreach ($plans as $category => $list) {
+    $plans[$category] = array_unique($list);
+}
 
-    // ===== Only show plans relevant to the user's goal =====
-    if ($data['goal'] === 'medical') {
-        $plansToShow = $plans['Medical'];
-    } elseif ($data['goal'] === 'critical_illness') {
-        $plansToShow = $plans['Critical'];
-    } else { // savings/protection
-        $plansToShow = $plans['Life'];
-    }
+// ===== Only show plans relevant to the user's goal =====
+if ($data['goal'] === 'medical') {
+    $plansToShow = $plans['Medical'];
+} elseif ($data['goal'] === 'critical_illness') {
+    $plansToShow = $plans['Critical'];
+} else { // savings/protection
+    $plansToShow = $plans['Life'];
+}
+
 
     // ===== Plan details =====
     $details = [
