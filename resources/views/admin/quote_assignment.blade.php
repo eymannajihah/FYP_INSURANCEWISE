@@ -113,7 +113,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
 
                 // ✅ Only parse JSON once
-                const result = await response.json();
+                const text = await response.text();
+console.log(text);
+return;
+
 
                 if (result.success) {
                     document.getElementById(`status-${id}`).textContent = 'assigned';
