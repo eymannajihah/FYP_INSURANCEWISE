@@ -111,13 +111,14 @@ document.querySelectorAll('.assign-form').forEach(form => {
         formData.append('assigned_to', input.value);
 
         try {
-            const response = await fetch(`/admin/quote-requests/${id}/assign`, {
-                method: 'POST',
-                headers: {
-                    'X-CSRF-TOKEN': csrfToken
-                },
-                body: formData
-            });
+            const response = await fetch(`/admin/quote/assign/${id}`, {
+    method: 'POST',
+    headers: {
+        'X-CSRF-TOKEN': csrfToken
+    },
+    body: formData
+});
+
 
             const result = await response.json().catch(() => ({ success: false, error: 'Server error' }));
 
