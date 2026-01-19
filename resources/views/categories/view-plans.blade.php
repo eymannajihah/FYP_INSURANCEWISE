@@ -247,7 +247,7 @@ document.addEventListener('DOMContentLoaded', function () {
     "Total Permanent Disability": {title:"Total Permanent Disability (TPD)",description:"A condition where the insured becomes permanently unable to work due to illness or injury. The plan pays a lump sum in this case."},
     "Sum Assured": {title:"Sum Assured",description:"The guaranteed amount your insurance company will pay in the event of death or TPD, based on the coverage selected."},
     "Optional Riders": {title:"Optional Riders",description:"Additional benefits that can be purchased to enhance coverage, such as critical illness, accidental benefit, and weekly income benefit."},
-    "Lump-sum": {title:"Lump sum",description:"one-time payment of a large amount of money"}
+    "Lumpsum": {title:"Lump sum",description:"one-time payment of a large amount of money"}
     };
 
     function escapeRegex(string) { return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
