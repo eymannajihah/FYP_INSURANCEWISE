@@ -6,7 +6,7 @@
 /* ===== Page Background ===== */
 body {
     font-family: 'Poppins', sans-serif;
-    background-image: url("/image/requestform.jpeg"); /* relative path avoids HTTP/HTTPS issues */
+    background-image: url("/image/requestform.jpeg"); /* relative path avoids HTTP/HTTPS issue */
     background-repeat: no-repeat;
     background-position: center center;
     background-size: cover;
@@ -96,7 +96,7 @@ input:focus {
 <div class="contact-section">
     <div class="contact-container">
         <h2>Get Your Quote</h2>
-        <form id="contactForm" action="{{ route('quote.submit') }}" method="POST">
+        <form id="contactForm" action="/quote-request" method="POST">
             @csrf
             <label for="name">Full Name</label>
             <input type="text" id="name" name="name" placeholder="Your name..." required>
@@ -120,8 +120,7 @@ document.getElementById('contactForm').addEventListener('submit', async function
     const formData = new FormData(this);
 
     try {
-        // Use relative URL from form action
-        const response = await fetch(this.action, {
+        const response = await fetch(this.action, { // relative URL ensures HTTPS works
             method: 'POST',
             headers: {
                 'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value
@@ -129,11 +128,7 @@ document.getElementById('contactForm').addEventListener('submit', async function
             body: formData
         });
 
-        // Check for HTTP errors
-        if (!response.ok) throw new Error('Server error: ' + response.status);
-
-        // Parse JSON safely
-        const result = await response.json().catch(() => ({ success: false, error: 'Server returned invalid JSON' }));
+        const result = await response.json().catch(() => ({ success: false, error: 'Server error' }));
 
         if (result.success) {
             document.getElementById('successMessage').style.display = 'block';
@@ -141,7 +136,6 @@ document.getElementById('contactForm').addEventListener('submit', async function
         } else {
             alert(result.error || 'Something went wrong!');
         }
-
     } catch (error) {
         console.error('Error submitting form:', error);
         alert('An error occurred. Please try again.');
