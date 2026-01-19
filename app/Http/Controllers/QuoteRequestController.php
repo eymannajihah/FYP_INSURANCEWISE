@@ -5,8 +5,9 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Kreait\Firebase\Factory;
 use Illuminate\Support\Facades\Mail;
-use App\Mail\QuoteAssignedMail;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\App;
+use App\Mail\QuoteAssignedMail;
 
 class QuoteRequestController extends Controller
 {
@@ -21,7 +22,9 @@ class QuoteRequestController extends Controller
         $this->database = $firebase->createDatabase();
     }
 
-    // Store a new quote request
+    /**
+     * Store a new quote request (PUBLIC FORM)
+     */
     public function store(Request $request)
     {
         $request->validate([
@@ -40,99 +43,122 @@ class QuoteRequestController extends Controller
             ]);
 
             return response()->json(['success' => true]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            Log::error('Quote store failed', ['error' => $e->getMessage()]);
+
             return response()->json([
                 'success' => false,
-                'error'   => $e->getMessage(),
-            ]);
+                'error'   => 'Failed to submit quote request.'
+            ], 500);
         }
     }
 
-    // Pending quotes page
+    /**
+     * Admin – Pending quote requests
+     */
     public function index()
     {
-        $allRequests = $this->database->getReference('quote_requests')->getValue() ?? [];
+        $allRequests = $this->database
+            ->getReference('quote_requests')
+            ->getValue() ?? [];
 
         $requests = collect($allRequests)
-            ->reject(fn($item) => ($item['status'] ?? '') === 'deleted' || ($item['status'] ?? '') === 'assigned')
+            ->reject(fn ($item) =>
+                in_array($item['status'] ?? '', ['assigned', 'deleted'])
+            )
             ->sortByDesc('created_at')
             ->toArray();
 
         return view('admin.quote_assignment', compact('requests'));
     }
 
-    // Assigned quotes page
+    /**
+     * Admin – Assigned quotes
+     */
     public function assigned()
     {
-        $allRequests = $this->database->getReference('quote_requests')->getValue() ?? [];
+        $allRequests = $this->database
+            ->getReference('quote_requests')
+            ->getValue() ?? [];
 
         $assigned = collect($allRequests)
-            ->filter(fn($item) => isset($item['assigned_to']) && ($item['status'] ?? '') === 'assigned')
+            ->filter(fn ($item) =>
+                ($item['status'] ?? '') === 'assigned'
+            )
             ->sortByDesc('assigned_at')
             ->toArray();
 
         return view('admin.quote_assigned', compact('assigned'));
     }
 
-  public function assign(Request $request, $id)
-{
-    $request->validate([
-        'assigned_to' => 'required|string|max:255',
-    ]);
+    /**
+     * Admin – Assign staff to quote (AJAX)
+     */
+    public function assign(Request $request, $id)
+    {
+        $request->validate([
+            'assigned_to' => 'required|string|max:255',
+        ]);
 
-    $ref = $this->database->getReference("quote_requests/{$id}");
-    $quote = $ref->getValue();
+        $ref   = $this->database->getReference("quote_requests/{$id}");
+        $quote = $ref->getValue();
 
-    if (!$quote) {
+        if (!$quote) {
+            return response()->json([
+                'success' => false,
+                'error'   => 'Quote request not found.'
+            ], 404);
+        }
+
+        // ✅ Update Firebase FIRST (fast)
+        $ref->update([
+            'assigned_to' => $request->assigned_to,
+            'status'      => 'assigned',
+            'assigned_at' => now()->toDateTimeString(),
+            'updated_at'  => now()->toDateTimeString(),
+        ]);
+
+        /**
+         * ✅ Send email AFTER response
+         * ❌ No dispatch()
+         * ❌ No closure serialization
+         * ❌ No CurlHandle issues
+         */
+        App::terminating(function () use ($quote, $request) {
+            try {
+                Mail::to($quote['email'])->send(
+                    new QuoteAssignedMail(
+                        $quote['name'],
+                        $quote['phone'],
+                        $request->assigned_to
+                    )
+                );
+            } catch (\Throwable $e) {
+                Log::error('Quote assignment email failed', [
+                    'email' => $quote['email'] ?? 'unknown',
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        });
+
+        // ✅ CLEAN JSON RESPONSE (no corruption)
         return response()->json([
-            'success' => false,
-            'error'   => 'Quote request not found.'
-        ], 404);
-    }
-
-    // Update Firebase first (fast)
-    $ref->update([
-        'assigned_to' => $request->assigned_to,
-        'status'      => 'assigned',
-        'assigned_at' => now()->toDateTimeString(),
-        'updated_at'  => now()->toDateTimeString(),
-    ]);
-
-    // Send email asynchronously
-    try {
-        dispatch(function () use ($quote, $request) {
-            Mail::to($quote['email'])->send(
-                new QuoteAssignedMail(
-                    $quote['name'],
-                    $quote['phone'],
-                    $request->assigned_to
-                )
-            );
-        })->afterResponse();
-    } catch (\Throwable $e) {
-        // Log errors but do NOT echo anything
-        Log::error('Email sending failed', [
-            'quote_id' => $id,
-            'email'    => $quote['email'] ?? 'none',
-            'error'    => $e->getMessage(),
+            'success' => true,
+            'message' => 'Staff assigned successfully. Email will be sent shortly.'
         ]);
     }
 
-    // Return JSON immediately
-    return response()->json([
-        'success' => true,
-        'message' => 'Staff assigned successfully. Email will be sent asynchronously.'
-    ]);
-}
-
-
-    // Delete (archive) assigned quote
+    /**
+     * Admin – Archive (soft delete)
+     */
     public function destroy($id)
     {
         $ref = $this->database->getReference("quote_requests/{$id}");
 
         if (!$ref->getSnapshot()->exists()) {
-            return redirect()->back()->withErrors(['not_found' => 'Quote request not found.']);
+            return redirect()
+                ->back()
+                ->withErrors(['not_found' => 'Quote request not found.']);
         }
 
         $ref->update([
@@ -140,6 +166,8 @@ class QuoteRequestController extends Controller
             'deleted_at' => now()->toDateTimeString(),
         ]);
 
-        return redirect()->back()->with('success', 'Quote request archived successfully.');
+        return redirect()
+            ->back()
+            ->with('success', 'Quote request archived successfully.');
     }
 }
