@@ -6,12 +6,12 @@
 /* ===== Page Background ===== */
 body {
     font-family: 'Poppins', sans-serif;
-    background-image: url("/image/requestform.jpeg"); /* relative path avoids HTTP/HTTPS issue */
+    background-image: url("/image/requestform.jpeg");
     background-repeat: no-repeat;
     background-position: center center;
     background-size: cover;
     margin: 0;
-    padding-top: 80px; /* push content below navbar */
+    padding-top: 80px;
 }
 
 /* ===== Form Section ===== */
@@ -96,7 +96,7 @@ input:focus {
 <div class="contact-section">
     <div class="contact-container">
         <h2>Get Your Quote</h2>
-        <form id="contactForm" action="/quote-request" method="POST">
+        <form id="contactForm" action="{{ route('quote.submit') }}" method="POST">
             @csrf
             <label for="name">Full Name</label>
             <input type="text" id="name" name="name" placeholder="Your name..." required>
@@ -120,10 +120,11 @@ document.getElementById('contactForm').addEventListener('submit', async function
     const formData = new FormData(this);
 
     try {
-        const response = await fetch(this.action, { // relative URL ensures HTTPS works
+        const response = await fetch(this.action, {
             method: 'POST',
             headers: {
-                'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value
+                'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
+                'Accept': 'application/json'
             },
             body: formData
         });
