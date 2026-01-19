@@ -75,58 +75,51 @@ class QuoteRequestController extends Controller
     }
 
     // Assign staff to a quote (AJAX POST)
-    public function assign(Request $request, $id)
-    {
-        $request->validate([
-            'assigned_to' => 'required|string|max:255',
-        ]);
+   public function assign(Request $request, $id)
+{
+    $request->validate([
+        'assigned_to' => 'required|string|max:255',
+    ]);
 
-        $ref = $this->database->getReference("quote_requests/{$id}");
-        $quote = $ref->getValue();
+    $ref = $this->database->getReference("quote_requests/{$id}");
+    $quote = $ref->getValue();
 
-        if (!$quote) {
-            return response()->json([
-                'success' => false,
-                'error' => 'Quote request not found.'
-            ], 404);
-        }
+    if (!$quote) {
+        return response()->json([
+            'success' => false,
+            'error' => 'Quote request not found.'
+        ], 404);
+    }
 
-        // Update Firebase first
-        try {
-            $ref->update([
-                'assigned_to' => $request->assigned_to,
-                'status'      => 'assigned',
-                'assigned_at' => now()->toDateTimeString(),
-                'updated_at'  => now()->toDateTimeString(),
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'error' => 'Failed to update Firebase: '.$e->getMessage()
-            ], 500);
-        }
+    // 1️⃣ Update Firebase immediately
+    $ref->update([
+        'assigned_to' => $request->assigned_to,
+        'status'      => 'assigned',
+        'assigned_at' => now()->toDateTimeString(),
+        'updated_at'  => now()->toDateTimeString(),
+    ]);
 
-        // Send email via Gmail SMTP (non-blocking)
-        try {
-            Mail::to($quote['email'])->send(new QuoteAssignedMail(
+    // 2️⃣ Queue the email (do NOT block assignment)
+    try {
+        Mail::to($quote['email'])->queue(
+            new QuoteAssignedMail(
                 $quote['name'],
                 $quote['phone'],
                 $request->assigned_to
-            ));
-        } catch (\Exception $e) {
-            Log::error('QuoteAssignedMail failed', [
-                'quote_id' => $id,
-                'email'    => $quote['email'],
-                'error'    => $e->getMessage(),
-            ]);
-            // Email failed but assignment already successful
-        }
+            )
+        );
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Staff assigned successfully. Email sent if possible.'
-        ]);
+        Log::info("Queued email to {$quote['email']} for assigned staff {$request->assigned_to}");
+    } catch (\Exception $e) {
+        Log::error("Failed to queue email to {$quote['email']}: ".$e->getMessage());
     }
+
+    // 3️⃣ Respond immediately to frontend
+    return response()->json([
+        'success' => true,
+        'message' => 'Staff assigned successfully. Email will be sent shortly.'
+    ]);
+}
 
     // Delete (archive) assigned quote
     public function destroy($id)
