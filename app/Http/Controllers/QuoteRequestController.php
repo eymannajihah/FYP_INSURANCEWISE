@@ -4,12 +4,9 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Kreait\Firebase\Factory;
-use Kreait\Firebase\Database;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\QuoteAssignedMail;
 use Illuminate\Support\Facades\Log;
-
-
 
 class QuoteRequestController extends Controller
 {
@@ -24,7 +21,7 @@ class QuoteRequestController extends Controller
         $this->database = $firebase->createDatabase();
     }
 
-    // Store the quote request
+    // Store a new quote request
     public function store(Request $request)
     {
         $request->validate([
@@ -34,11 +31,11 @@ class QuoteRequestController extends Controller
         ]);
 
         try {
-            $ref = $this->database->getReference('quote_requests')->push([
-                'name'  => $request->name,
-                'email' => $request->email,
-                'phone' => $request->phone,
-                'status'=> 'pending',
+            $this->database->getReference('quote_requests')->push([
+                'name'       => $request->name,
+                'email'      => $request->email,
+                'phone'      => $request->phone,
+                'status'     => 'pending',
                 'created_at' => now()->toDateTimeString(),
             ]);
 
@@ -46,138 +43,90 @@ class QuoteRequestController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'error' => $e->getMessage()
+                'error'   => $e->getMessage(),
             ]);
         }
     }
 
-    // Admin: show all quote requests
- public function index()
-{
-    $allRequests = $this->database->getReference('quote_requests')->getValue() ?? [];
+    // Pending quotes page
+    public function index()
+    {
+        $allRequests = $this->database->getReference('quote_requests')->getValue() ?? [];
 
-    // Only include requests that have not been assigned and are not deleted
-    $requests = collect($allRequests)
-        ->reject(function ($item) {
-            return isset($item['status']) && $item['status'] === 'deleted';
-        })
-        ->filter(function ($item) {
-            // Keep only unassigned
-            return empty($item['assigned_to']);
-        })
-        ->sortByDesc('created_at') // latest submissions on top
-        ->toArray();
+        $requests = collect($allRequests)
+            ->reject(fn($item) => ($item['status'] ?? '') === 'deleted')
+            ->filter(fn($item) => empty($item['assigned_to']))
+            ->sortByDesc('created_at')
+            ->toArray();
 
-    return view('admin.quote_assignment', compact('requests'));
-}
+        return view('admin.quote_assignment', compact('requests'));
+    }
 
+    // Assigned quotes page
+    public function assigned()
+    {
+        $allRequests = $this->database->getReference('quote_requests')->getValue() ?? [];
 
+        $assigned = collect($allRequests)
+            ->filter(fn($item) => isset($item['assigned_to']) && ($item['status'] ?? '') !== 'deleted')
+            ->sortByDesc('updated_at')
+            ->toArray();
 
-    private function sortByLatest($data)
-{
-    if (!is_array($data)) return [];
+        return view('admin.quote_assigned', compact('assigned'));
+    }
 
-    uasort($data, function ($a, $b) {
-        return strtotime($b['created_at'] ?? '') <=> strtotime($a['created_at'] ?? '');
-    });
+    // Assign staff to a quote (AJAX POST)
+    public function assign(Request $request, $id)
+    {
+        $request->validate([
+            'assigned_to' => 'required|string|max:255',
+        ]);
 
-    return $data;
-}
+        $ref = $this->database->getReference("quote_requests/{$id}");
+        $quote = $ref->getValue();
 
-public function assignedList()
-{
-    $allRequests = $this->database
-        ->getReference('quote_requests')
-        ->getValue() ?? [];
-
-    // Filter only ASSIGNED
-    $assigned = array_filter($allRequests, function ($req) {
-        return ($req['status'] ?? '') === 'assigned';
-    });
-
-    $assigned = $this->sortByLatest($assigned);
-
-    return view('admin.quote_assigned', compact('assigned'));
-}
-
-public function destroy($id)
-{
-    try {
-        $ref = $this->database->getReference("quote_requests/$id");
-
-        // Safety check: ensure record exists
-        if (!$ref->getSnapshot()->exists()) {
-            return back()->with('error', 'Quote request not found.');
+        if (!$quote) {
+            return response()->json([
+                'success' => false,
+                'error'   => 'Quote request not found.'
+            ], 404);
         }
 
-        // Soft delete
         $ref->update([
-            'status' => 'deleted',
+            'assigned_to' => $request->assigned_to,
+            'status'      => 'assigned',
+            'assigned_at' => now()->toDateTimeString(),
+            'updated_at'  => now()->toDateTimeString(),
+        ]);
+
+        // Send email
+        try {
+            Mail::to($quote['email'])->send(new QuoteAssignedMail(
+                $quote['name'],
+                $quote['phone'],
+                $request->assigned_to
+            ));
+        } catch (\Exception $e) {
+            Log::error('Failed to send quote assigned email: '.$e->getMessage());
+        }
+
+        return response()->json(['success' => true]);
+    }
+
+    // Delete (archive) assigned quote
+    public function destroy($id)
+    {
+        $ref = $this->database->getReference("quote_requests/{$id}");
+
+        if (!$ref->getSnapshot()->exists()) {
+            return redirect()->back()->withErrors(['not_found' => 'Quote request not found.']);
+        }
+
+        $ref->update([
+            'status'     => 'deleted',
             'deleted_at' => now()->toDateTimeString(),
         ]);
 
-        return back()->with('success', 'Quote request archived successfully.');
-    } catch (\Exception $e) {
-        return back()->with('error', 'Failed to archive quote request.');
+        return redirect()->back()->with('success', 'Quote request archived successfully.');
     }
-}
-
-
-public function assigned()
-{
-    $allRequests = $this->database->getReference('quote_requests')->getValue() ?? [];
-
-    // Only include assigned requests and exclude deleted
-    $assigned = collect($allRequests)
-        ->filter(function ($item) {
-            return isset($item['assigned_to']) && $item['status'] !== 'deleted';
-        })
-        ->sortByDesc('updated_at') // latest assigned first
-        ->toArray();
-
-    return view('admin.quote_assigned', compact('assigned'));
-}
-
-// Admin: assign staff to a quote request
-public function assign(Request $request, $id)
-{
-    // Validate input
-    $request->validate([
-        'assigned_to' => 'required|string|max:255',
-    ]);
-
-    // Get the quote from Firebase
-    $ref = $this->database->getReference("quote_requests/{$id}");
-    $quote = $ref->getValue();
-
-    if (!$quote) {
-        return response()->json([
-            'success' => false,
-            'error' => 'Quote request not found.'
-        ], 404);
-    }
-
-    // Update assignment + status in Firebase
-    $ref->update([
-        'assigned_to' => $request->assigned_to,
-        'status'      => 'assigned',
-        'assigned_at' => now()->toDateTimeString(),
-        'updated_at'  => now()->toDateTimeString(),
-    ]);
-
-    // Send email to user
-    try {
-        Mail::to($quote['email'])->send(new QuoteAssignedMail(
-            $quote['name'],
-            $quote['phone'],
-            $request->assigned_to
-        ));
-    } catch (\Exception $e) {
-        // Log error but still return success to AJAX
-        Log::error('Failed to send quote assigned email: '.$e->getMessage());
-    }
-
-    // Return JSON for AJAX
-    return response()->json(['success' => true]);
-}
 }

@@ -14,9 +14,6 @@ class QuoteAssignedMail extends Mailable
     public $phone;
     public $assignedTo;
 
-    /**
-     * Create a new message instance.
-     */
     public function __construct($name, $phone, $assignedTo)
     {
         $this->name       = $name;
@@ -24,9 +21,6 @@ class QuoteAssignedMail extends Mailable
         $this->assignedTo = $assignedTo;
     }
 
-    /**
-     * Build the message.
-     */
     public function build()
     {
         return $this->subject('Your Insurance Quote Request Has Been Assigned')

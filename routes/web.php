@@ -50,9 +50,6 @@ Route::get('/admin/quote-requests', [QuoteRequestController::class, 'index'])->n
 // Assign staff to a quote
 Route::post('/admin/quote-requests/{id}/assign', [QuoteRequestController::class, 'assign'])->name('quote.assign');
 
-// Assigned quotes (old method)
-Route::get('/admin/quote-assigned', [QuoteRequestController::class, 'assignedList'])->name('quote.assigned.list');
-
 // Assigned quotes (current method)
 Route::get('/admin/quote-requests/assigned', [QuoteRequestController::class, 'assigned'])->name('quote.assigned');
 
@@ -68,7 +65,7 @@ Route::prefix('admin')->group(function () {
     Route::get('/edit-plan/{id}', [AdminController::class, 'editPlanForm'])->name('admin.edit-plan');
     Route::put('/edit-plan/{id}', [AdminController::class, 'editPlan'])->name('admin.update-plan');
     Route::delete('/delete-plan/{id}', [AdminController::class, 'deletePlan'])->name('admin.delete-plan');
-    Route::post('/quote/assign/{id}', [AdminController::class, 'assignQuote'])->name('quote.assign');
+    
 });
 
 // ===== COMPARISON ===== //
