@@ -146,7 +146,7 @@
             <p class="plan-category">{{ $plan['category'] }} Insurance Plan</p>
 
             @if(!empty($plan['banner_image']))
-            <img src="{{ asset('storage/' . $plan['banner_image']) }}" alt="Banner" class="plan-banner">
+            <img src="{{ $plan['banner_image'] }}" alt="Banner"  class="plan-banner">
             @endif
         </div>
 

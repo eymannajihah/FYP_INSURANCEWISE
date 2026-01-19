@@ -92,57 +92,64 @@ class AdminController extends Controller
         return view('admin.manage_plans', compact('plans'));
     }
 
-    public function addPlan(Request $request)
-    {
-        $check = $this->checkAdmin();
-        if ($check instanceof \Illuminate\Http\RedirectResponse) return $check;
+   public function addPlan(Request $request)
+{
+    $check = $this->checkAdmin();
+    if ($check instanceof \Illuminate\Http\RedirectResponse) return $check;
 
-        $request->validate([
-            'name' => 'required|string',
-            'category' => 'required|string',
-            'overview' => 'required|string',
-            'features' => 'required|string',
-            'eligibility' => 'required|string',
-            'fees' => 'required|string',
-            'pidm' => 'nullable|string',
-            'cash_rewards' => 'nullable|string',
-            'additional_benefits' => 'nullable|string',
-            'disclaimers' => 'nullable|string',
-            'highlight' => 'nullable|string',
-            'brochure' => 'nullable|file|mimes:pdf',
-            'banner_image' => 'nullable|image|max:2048',
-            'annual_limit' => 'required|string',
-            'lifetime_limit' => 'required|string',
-            'hospitalisation' => 'required|string',
-            'benefits' => 'required|string',
-            'entry_age' => 'required|string',
-            'nationality' => 'required|string',
-            'coverage_age' => 'required|string',
-            'coverage_term' => 'required|string',
-        ]);
+    $request->validate([
+        'name' => 'required|string',
+        'category' => 'required|string',
+        'overview' => 'required|string',
+        'features' => 'required|string',
+        'eligibility' => 'required|string',
+        'fees' => 'required|string',
+        'pidm' => 'nullable|string',
+        'cash_rewards' => 'nullable|string',
+        'additional_benefits' => 'nullable|string',
+        'disclaimers' => 'nullable|string',
+        'highlight' => 'nullable|string',
+        'brochure' => 'nullable|file|mimes:pdf',
+        'banner_image' => 'nullable|image|max:2048',
+        'annual_limit' => 'required|string',
+        'lifetime_limit' => 'required|string',
+        'hospitalisation' => 'required|string',
+        'benefits' => 'required|string',
+        'entry_age' => 'required|string',
+        'nationality' => 'required|string',
+        'coverage_age' => 'required|string',
+        'coverage_term' => 'required|string',
+    ]);
 
-        $bannerFilename = null;
-if ($request->hasFile('banner_image')) {
-    // Store in storage/app/public/plans
-    $bannerFilename = $request->file('banner_image')->store('plans', 'public');
-}
+    // Initialize Firebase Storage client (for both banner & brochure)
+    $storageClient = new \Google\Cloud\Storage\StorageClient([
+        'keyFilePath' => env('FIREBASE_CREDENTIALS'),
+    ]);
+    $bucket = $storageClient->bucket('insurancewise-731f8.firebasestorage.app');
 
-$planData['banner_image'] = $bannerFilename;
+    // ---------------- Banner Image ----------------
+    $bannerUrl = null;
+    if ($request->hasFile('banner_image')) {
+        $bannerFile = $request->file('banner_image');
+        $bannerFilename = time() . '_' . $bannerFile->getClientOriginalName();
 
-$brochureUrl = null;
+        $bucket->upload(
+            fopen($bannerFile->getRealPath(), 'r'),
+            [
+                'name' => 'plans/' . $bannerFilename,
+                'predefinedAcl' => 'publicRead',
+            ]
+        );
+
+        $bannerUrl = 'https://storage.googleapis.com/' . $bucket->name() . '/plans/' . $bannerFilename;
+    }
+
+    // ---------------- Brochure ----------------
+    $brochureUrl = null;
     if ($request->hasFile('brochure')) {
         $brochureFile = $request->file('brochure');
         $brochureFilename = time() . '_' . $brochureFile->getClientOriginalName();
 
-        // Initialize Firebase Storage client
-        $storage = new \Google\Cloud\Storage\StorageClient([
-            'keyFilePath' => env('FIREBASE_CREDENTIALS'),
-        ]);
-
-        // Get your bucket
-        $bucket = $storage->bucket('insurancewise-731f8.firebasestorage.app');
-
-        // Upload the brochure
         $bucket->upload(
             fopen($brochureFile->getRealPath(), 'r'),
             [
@@ -151,45 +158,40 @@ $brochureUrl = null;
             ]
         );
 
-        // Get public URL
         $brochureUrl = 'https://storage.googleapis.com/' . $bucket->name() . '/brochures/' . $brochureFilename;
-    
+    }
 
-    // Save in plan data
-    $planData['brochure'] = $brochureUrl;
-} else {
-    $planData['brochure'] = null;
-}
-        $this->database->getReference('plans')->push([
-            'name' => $request->name,
-            'category' => $request->category,
-            'overview' => $request->overview,
-            'features' => $request->features,
-            'eligibility' => $request->eligibility,
-            'fees' => $request->fees,
-            'pidm' => $request->pidm,
-            'cash_rewards' => $request->cash_rewards,
-            'additional_benefits' => $request->additional_benefits,
-            'disclaimers' => $request->disclaimers,
-            'highlight' => $request->highlight,
-            'banner_image' => $bannerFilename,
-            'brochure' => $brochureUrl,
-            'summary' => [
+    // ---------------- Save Plan in Firebase DB ----------------
+    $this->database->getReference('plans')->push([
+        'name' => $request->name,
+        'category' => $request->category,
+        'overview' => $request->overview,
+        'features' => $request->features,
+        'eligibility' => $request->eligibility,
+        'fees' => $request->fees,
+        'pidm' => $request->pidm,
+        'cash_rewards' => $request->cash_rewards,
+        'additional_benefits' => $request->additional_benefits,
+        'disclaimers' => $request->disclaimers,
+        'highlight' => $request->highlight,
+        'banner_image' => $bannerUrl,  // <-- save Firebase URL
+        'brochure' => $brochureUrl,    // <-- save Firebase URL
+        'summary' => [
             'annual_limit' => $request->annual_limit,
             'lifetime_limit' => $request->lifetime_limit,
             'hospitalisation' => $request->hospitalisation,
             'benefits' => $request->benefits,
             'eligibility' => [
-            'entry_age' => $request->entry_age,
-            'nationality' => $request->nationality,
-            'coverage_age' => $request->coverage_age,
-            'coverage_term' => $request->coverage_term,
-    ],
-],
-        ]);
+                'entry_age' => $request->entry_age,
+                'nationality' => $request->nationality,
+                'coverage_age' => $request->coverage_age,
+                'coverage_term' => $request->coverage_term,
+            ],
+        ],
+    ]);
 
-        return redirect()->route('admin.manage-plans')->with('success', 'Plan added successfully!');
-    }
+    return redirect()->route('admin.manage-plans')->with('success', 'Plan added successfully!');
+}
 
     public function editPlanForm($id)
     {
@@ -238,8 +240,8 @@ public function editPlan(Request $request, $id)
         'coverage_term' => 'required|string',
         'banner_image' => 'nullable|image|max:2048',
         'brochure' => 'nullable|file|mimes:pdf',
-        'delete_banner' => 'nullable|boolean', // NEW
-        'delete_brochure' => 'nullable|boolean', // NEW
+        'delete_banner' => 'nullable|boolean',
+        'delete_brochure' => 'nullable|boolean',
     ]);
 
     // Prepare update data
@@ -269,41 +271,55 @@ public function editPlan(Request $request, $id)
         ],
     ];
 
-// Handle banner image
-if ($request->hasFile('banner_image')) {
-    // Store new image in storage/app/public/plans
-    $bannerFilename = $request->file('banner_image')->store('plans', 'public');
+    // Initialize Firebase Storage client
+    $storageClient = new \Google\Cloud\Storage\StorageClient([
+        'keyFilePath' => env('FIREBASE_CREDENTIALS'),
+    ]);
+    $bucket = $storageClient->bucket('insurancewise-731f8.firebasestorage.app');
 
-    // Delete old banner if exists
-    if (!empty($plan['banner_image']) && Storage::disk('public')->exists($plan['banner_image'])) {
-        Storage::disk('public')->delete($plan['banner_image']);
+    // ---------------- Banner Image ----------------
+    if ($request->hasFile('banner_image')) {
+        $bannerFile = $request->file('banner_image');
+        $bannerFilename = time() . '_' . $bannerFile->getClientOriginalName();
+
+        // Upload new banner to Firebase
+        $bucket->upload(
+            fopen($bannerFile->getRealPath(), 'r'),
+            [
+                'name' => 'plans/' . $bannerFilename,
+                'predefinedAcl' => 'publicRead',
+            ]
+        );
+
+        // Delete old banner from Firebase if exists
+        if (!empty($plan['banner_image'])) {
+            $oldObjectName = str_replace('https://storage.googleapis.com/'.$bucket->name().'/', '', $plan['banner_image']);
+            $oldObject = $bucket->object($oldObjectName);
+            if ($oldObject->exists()) $oldObject->delete();
+        }
+
+        $updateData['banner_image'] = 'https://storage.googleapis.com/' . $bucket->name() . '/plans/' . $bannerFilename;
+
+    } elseif ($request->delete_banner) {
+        // Delete banner if admin requested
+        if (!empty($plan['banner_image'])) {
+            $oldObjectName = str_replace('https://storage.googleapis.com/'.$bucket->name().'/', '', $plan['banner_image']);
+            $oldObject = $bucket->object($oldObjectName);
+            if ($oldObject->exists()) $oldObject->delete();
+        }
+        $updateData['banner_image'] = null;
+
+    } else {
+        // Keep existing banner
+        $updateData['banner_image'] = $plan['banner_image'] ?? null;
     }
 
-    $updateData['banner_image'] = $bannerFilename;
-
-} elseif ($request->delete_banner) {
-    // Delete banner if admin clicked delete checkbox
-    if (!empty($plan['banner_image']) && Storage::disk('public')->exists($plan['banner_image'])) {
-        Storage::disk('public')->delete($plan['banner_image']);
-    }
-    $updateData['banner_image'] = null;
-
-} else {
-    // Keep existing banner
-    $updateData['banner_image'] = $plan['banner_image'] ?? null;
-}
-
-
-    // Handle brochure
+    // ---------------- Brochure ----------------
     if ($request->hasFile('brochure')) {
         $brochureFile = $request->file('brochure');
         $brochureFilename = time() . '_' . $brochureFile->getClientOriginalName();
 
-        $storage = new \Google\Cloud\Storage\StorageClient([
-            'keyFilePath' => env('FIREBASE_CREDENTIALS'),
-        ]);
-        $bucket = $storage->bucket('insurancewise-731f8.firebasestorage.app');
-        $object = $bucket->upload(
+        $bucket->upload(
             fopen($brochureFile->getRealPath(), 'r'),
             [
                 'name' => 'brochures/' . $brochureFilename,
@@ -311,21 +327,20 @@ if ($request->hasFile('banner_image')) {
             ]
         );
 
-        $brochureUrl = 'https://storage.googleapis.com/' . $bucket->name() . '/brochures/' . $brochureFilename;
-        $updateData['brochure'] = $brochureUrl;
+        // Delete old brochure if exists
+        if (!empty($plan['brochure'])) {
+            $oldObjectName = str_replace('https://storage.googleapis.com/'.$bucket->name().'/', '', $plan['brochure']);
+            $oldObject = $bucket->object($oldObjectName);
+            if ($oldObject->exists()) $oldObject->delete();
+        }
+
+        $updateData['brochure'] = 'https://storage.googleapis.com/' . $bucket->name() . '/brochures/' . $brochureFilename;
 
     } elseif ($request->delete_brochure) {
-        // Delete brochure if checkbox clicked
         if (!empty($plan['brochure'])) {
-            // Try removing from Firebase Storage
-            $storage = new \Google\Cloud\Storage\StorageClient([
-                'keyFilePath' => env('FIREBASE_CREDENTIALS'),
-            ]);
-            $bucket = $storage->bucket('insurancewise-731f8.firebasestorage.app');
-
-            $objectName = str_replace('https://storage.googleapis.com/'.$bucket->name().'/', '', $plan['brochure']);
-            $object = $bucket->object($objectName);
-            if ($object->exists()) $object->delete();
+            $oldObjectName = str_replace('https://storage.googleapis.com/'.$bucket->name().'/', '', $plan['brochure']);
+            $oldObject = $bucket->object($oldObjectName);
+            if ($oldObject->exists()) $oldObject->delete();
         }
         $updateData['brochure'] = null;
 

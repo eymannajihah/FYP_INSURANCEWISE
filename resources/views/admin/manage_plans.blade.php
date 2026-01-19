@@ -269,7 +269,7 @@
             <tr>
               <td>
                 @if(!empty($plan['banner_image']))
-                <img src="{{ asset('storage/' . $plan['banner_image']) }}" alt="Banner" class="img-fluid">
+                <img src="{{ $plan['banner_image'] }}" alt="Banner"  class="img-fluid">
                 @else
                   <span>No image</span>
                 @endif

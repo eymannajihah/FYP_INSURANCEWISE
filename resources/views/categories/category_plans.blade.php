@@ -136,7 +136,7 @@
             <div style="max-width: 350px; flex: 1 1 auto;">
                 <div class="plan-card text-center">
                     @if(!empty($plan['banner_image']))
-                        <img src="{{ asset('storage/' . $plan['banner_image']) }}" alt="Banner">
+                       <img src="{{ $plan['banner_image'] }}" alt="Banner" >
                     @else
                         <img src="{{ asset('image/default.jpg') }}" alt="No image">
                     @endif
