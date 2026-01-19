@@ -21,6 +21,7 @@
 table { width: 100%; table-layout: fixed; }
 th, td { text-align:center; vertical-align: middle; word-break: break-word; }
 .assign-success { color: green; font-size:13px; display:none; margin-top:5px; }
+.assign-error { color: red; font-size:13px; display:none; margin-top:5px; }
 </style>
 
 <div class="section quote-page-background">
@@ -61,7 +62,8 @@ th, td { text-align:center; vertical-align: middle; word-break: break-word; }
                   @csrf
                   <input type="text" name="assigned_to" placeholder="Staff name..." required style="padding:6px 8px; border-radius:5px; border:1px solid #dde3ec;">
                   <button type="submit" class="btn btn-danger btn-sm">Assign</button>
-                  <div class="assign-success" id="assign-success-{{ $id }}">Assigned successfully!</div>
+                  <div class="assign-success" id="assign-success-{{ $id }}">Assigned successfully! Email sent.</div>
+                  <div class="assign-error" id="assign-error-{{ $id }}">Assignment succeeded but email failed.</div>
                 </form>
               </td>
             </tr>
@@ -85,6 +87,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const id = this.dataset.id;
             const input = this.querySelector('input[name="assigned_to"]');
             const successDiv = document.getElementById(`assign-success-${id}`);
+            const errorDiv = document.getElementById(`assign-error-${id}`);
             const csrfToken = this.querySelector('input[name="_token"]').value;
 
             const formData = new FormData();
@@ -103,10 +106,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 const result = await response.json();
 
                 if(result.success){
-                    successDiv.style.display = 'block';
+                    // Show success or error based on email sending
+                    if(result.message && result.message.includes('Email sent')){
+                        successDiv.style.display = 'block';
+                        errorDiv.style.display = 'none';
+                    } else {
+                        successDiv.style.display = 'none';
+                        errorDiv.style.display = 'block';
+                    }
+
+                    // Update status and remove from table after short delay
                     document.getElementById(`status-${id}`).textContent = 'assigned';
                     input.value = '';
-                    setTimeout(() => successDiv.style.display='none', 3000);
+                    setTimeout(() => {
+                        const row = document.getElementById(`quote-row-${id}`);
+                        if(row) row.remove();
+                    }, 2000);
                 } else {
                     alert(result.error || 'Failed to assign staff.');
                 }

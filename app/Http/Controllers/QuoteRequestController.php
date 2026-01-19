@@ -50,23 +50,16 @@ class QuoteRequestController extends Controller
 
     // Pending quotes page
     public function index()
-{
-    $allRequests = $this->database
-        ->getReference('quote_requests')
-        ->getValue() ?? [];
+    {
+        $allRequests = $this->database->getReference('quote_requests')->getValue() ?? [];
 
-    $requests = collect($allRequests)
-        ->reject(fn ($item) => ($item['status'] ?? '') === 'deleted')
-        ->filter(fn ($item) =>
-            empty($item['assigned_to']) &&
-            ($item['status'] ?? '') !== 'assigned'
-        )
-        ->sortByDesc('created_at')
-        ->toArray();
+        $requests = collect($allRequests)
+            ->reject(fn($item) => ($item['status'] ?? '') === 'deleted' || ($item['status'] ?? '') === 'assigned')
+            ->sortByDesc('created_at')
+            ->toArray();
 
-    return view('admin.quote_assignment', compact('requests'));
-}
-
+        return view('admin.quote_assignment', compact('requests'));
+    }
 
     // Assigned quotes page
     public function assigned()
@@ -74,60 +67,66 @@ class QuoteRequestController extends Controller
         $allRequests = $this->database->getReference('quote_requests')->getValue() ?? [];
 
         $assigned = collect($allRequests)
-            ->filter(fn($item) => isset($item['assigned_to']) && ($item['status'] ?? '') !== 'deleted')
-            ->sortByDesc('updated_at')
+            ->filter(fn($item) => isset($item['assigned_to']) && ($item['status'] ?? '') === 'assigned')
+            ->sortByDesc('assigned_at')
             ->toArray();
 
         return view('admin.quote_assigned', compact('assigned'));
     }
 
     // Assign staff to a quote (AJAX POST)
- public function assign(Request $request, $id)
-{
-    $request->validate([
-        'assigned_to' => 'required|string|max:255',
-    ]);
+    public function assign(Request $request, $id)
+    {
+        $request->validate([
+            'assigned_to' => 'required|string|max:255',
+        ]);
 
-    $ref = $this->database->getReference("quote_requests/{$id}");
-    $quote = $ref->getValue();
+        $ref = $this->database->getReference("quote_requests/{$id}");
+        $quote = $ref->getValue();
 
-    if (!$quote) {
-        return response()->json([
-            'success' => false,
-            'error' => 'Quote request not found.'
-        ], 404);
-    }
+        if (!$quote) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Quote request not found.'
+            ], 404);
+        }
 
-    // Update Firebase first
-    $ref->update([
-        'assigned_to' => $request->assigned_to,
-        'status'      => 'assigned',
-        'assigned_at' => now()->toDateTimeString(),
-        'updated_at'  => now()->toDateTimeString(),
-    ]);
+        // Update Firebase first
+        try {
+            $ref->update([
+                'assigned_to' => $request->assigned_to,
+                'status'      => 'assigned',
+                'assigned_at' => now()->toDateTimeString(),
+                'updated_at'  => now()->toDateTimeString(),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to update Firebase: '.$e->getMessage()
+            ], 500);
+        }
 
-    // Send email via Gmail SMTP
-    try {
-        Mail::to($quote['email'])->send(
-            new \App\Mail\QuoteAssignedMail(
+        // Send email via Gmail SMTP (non-blocking)
+        try {
+            Mail::to($quote['email'])->send(new QuoteAssignedMail(
                 $quote['name'],
                 $quote['phone'],
                 $request->assigned_to
-            )
-        );
-    } catch (\Exception $e) {
-        Log::error('Email sending failed', [
-            'quote_id' => $id,
-            'email'    => $quote['email'],
-            'error'    => $e->getMessage(),
+            ));
+        } catch (\Exception $e) {
+            Log::error('QuoteAssignedMail failed', [
+                'quote_id' => $id,
+                'email'    => $quote['email'],
+                'error'    => $e->getMessage(),
+            ]);
+            // Email failed but assignment already successful
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Staff assigned successfully. Email sent if possible.'
         ]);
     }
-
-    return response()->json([
-        'success' => true,
-        'message' => 'Staff assigned successfully and email sent.'
-    ]);
-}
 
     // Delete (archive) assigned quote
     public function destroy($id)
