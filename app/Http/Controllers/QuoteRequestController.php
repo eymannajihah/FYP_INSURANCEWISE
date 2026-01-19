@@ -88,6 +88,7 @@ class QuoteRequestController extends Controller
         'assigned_to' => 'required|string|max:255',
     ]);
 
+    // 1️⃣ Reference the Firebase quote
     $ref = $this->database->getReference("quote_requests/{$id}");
     $quote = $ref->getValue();
 
@@ -98,7 +99,7 @@ class QuoteRequestController extends Controller
         ], 404);
     }
 
-    // 🔹 Assignment is ALWAYS the priority
+    // 2️⃣ Update Firebase first (guaranteed)
     $ref->update([
         'assigned_to' => $request->assigned_to,
         'status'      => 'assigned',
@@ -106,7 +107,7 @@ class QuoteRequestController extends Controller
         'updated_at'  => now()->toDateTimeString(),
     ]);
 
-    // 🔹 Email is OPTIONAL — never fail assignment
+    // 3️⃣ Send email safely via Mailgun
     try {
         Mail::to($quote['email'])->send(
             new QuoteAssignedMail(
@@ -116,20 +117,18 @@ class QuoteRequestController extends Controller
             )
         );
     } catch (\Exception $e) {
-        Log::warning('Email failed but assignment succeeded', [
+        Log::error('Email sending failed', [
             'quote_id' => $id,
-            'email' => $quote['email'],
-            'error' => $e->getMessage(),
+            'email'    => $quote['email'],
+            'error'    => $e->getMessage(),
         ]);
     }
 
-    // ✅ ALWAYS return success
     return response()->json([
         'success' => true,
-        'message' => 'Assigned successfully'
+        'message' => 'Staff assigned successfully and email sent (if no errors)'
     ]);
 }
-
     // Delete (archive) assigned quote
     public function destroy($id)
     {

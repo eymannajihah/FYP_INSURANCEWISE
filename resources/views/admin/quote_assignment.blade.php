@@ -78,11 +78,10 @@ th, td { text-align:center; vertical-align: middle; word-break: break-word; }
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.assign-form').forEach(form => {
-        form.addEventListener('submit', async function (e) {
+        form.addEventListener('submit', async function(e) {
             e.preventDefault();
-
             const id = this.dataset.id;
             const input = this.querySelector('input[name="assigned_to"]');
             const successDiv = document.getElementById(`assign-success-${id}`);
@@ -94,38 +93,29 @@ document.addEventListener('DOMContentLoaded', function () {
             try {
                 const response = await fetch(`/admin/quote-requests/${id}/assign`, {
                     method: 'POST',
-                    headers: {
+                    headers: { 
                         'X-CSRF-TOKEN': csrfToken,
                         'Accept': 'application/json'
                     },
                     body: formData
                 });
 
-                // 🟢 HANDLE HTTP ERRORS FIRST
-                if (!response.ok) {
-                    console.error('HTTP Error:', response.status);
-                    alert('Assignment completed, but server returned an error.');
-                    return;
-                }
-
                 const result = await response.json();
 
-                if (result.success) {
+                if(result.success){
                     successDiv.style.display = 'block';
                     document.getElementById(`status-${id}`).textContent = 'assigned';
                     input.value = '';
-                    setTimeout(() => successDiv.style.display = 'none', 3000);
+                    setTimeout(() => successDiv.style.display='none', 3000);
                 } else {
                     alert(result.error || 'Failed to assign staff.');
                 }
-
-            } catch (error) {
-                console.error('Fetch error:', error);
-                alert('Assignment completed, but email notification failed.');
+            } catch(e){
+                console.error(e);
+                alert('An error occurred.');
             }
         });
     });
 });
 </script>
-
 @endsection
