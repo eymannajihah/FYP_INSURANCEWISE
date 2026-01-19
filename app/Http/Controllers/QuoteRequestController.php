@@ -5,6 +5,11 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Kreait\Firebase\Factory;
 use Kreait\Firebase\Database;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\QuoteAssignedMail;
+use Illuminate\Support\Facades\Log;
+
+
 
 class QuoteRequestController extends Controller
 {
@@ -144,17 +149,29 @@ public function assign(Request $request, $id)
     $quote = $ref->getValue();
 
     if (!$quote) {
-        return back()->with('error', 'Quote request not found.');
+        return response()->json(['success' => false, 'error' => 'Quote request not found']);
     }
 
     $ref->update([
         'assigned_to' => $request->assigned_to,
         'status' => 'assigned',
-        'assigned_at' => now()->toDateTimeString(), // <-- THIS LINE IS CRUCIAL
+        'assigned_at' => now()->toDateTimeString(),
         'updated_at' => now()->toDateTimeString(),
     ]);
 
-    return redirect()->route('quote.assignment')->with('success', 'Quote request assigned successfully.');
+    // Send email to user
+    try {
+        Mail::to($quote['email'])->send(new QuoteAssignedMail(
+            $quote['name'],
+            $quote['phone'],
+            $request->assigned_to
+        ));
+    } catch (\Exception $e) {
+        // Log or handle email sending error
+        Log::error("Failed to send quote assignment email: ".$e->getMessage());
+    }
+
+    return response()->json(['success' => true]);
 }
 
 }
