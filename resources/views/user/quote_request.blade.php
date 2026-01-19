@@ -96,7 +96,7 @@ input:focus {
 <div class="contact-section">
     <div class="contact-container">
         <h2>Get Your Quote</h2>
-        <form id="contactForm" action="/quote-request" method="POST">
+        <form id="contactForm" method="POST">
             @csrf
             <label for="name">Full Name</label>
             <input type="text" id="name" name="name" placeholder="Your name..." required>
@@ -120,10 +120,12 @@ document.getElementById('contactForm').addEventListener('submit', async function
     const formData = new FormData(this);
 
     try {
-        const response = await fetch(this.action, { // relative URL ensures HTTPS works
+        // Use current page origin to force HTTPS
+        const response = await fetch(`${window.location.origin}/quote-request`, {
             method: 'POST',
             headers: {
-                'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value
+                'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
+                'Accept': 'application/json'
             },
             body: formData
         });
