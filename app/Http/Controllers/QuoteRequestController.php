@@ -74,24 +74,23 @@ class QuoteRequestController extends Controller
         return view('admin.quote_assigned', compact('assigned'));
     }
 
-   public function assign(Request $request, $id)
+  public function assign(Request $request, $id)
 {
     $request->validate([
         'assigned_to' => 'required|string|max:255',
     ]);
 
-    // 1️⃣ Get the quote from Firebase
     $ref = $this->database->getReference("quote_requests/{$id}");
     $quote = $ref->getValue();
 
     if (!$quote) {
         return response()->json([
             'success' => false,
-            'error' => 'Quote request not found.'
+            'error'   => 'Quote request not found.'
         ], 404);
     }
 
-    // 2️⃣ Update Firebase immediately
+    // Update Firebase first (fast)
     $ref->update([
         'assigned_to' => $request->assigned_to,
         'status'      => 'assigned',
@@ -99,33 +98,33 @@ class QuoteRequestController extends Controller
         'updated_at'  => now()->toDateTimeString(),
     ]);
 
-    // 3️⃣ Send email in the background (non-blocking)
-    // afterResponse ensures the JSON response returns immediately
-    dispatch(function () use ($quote, $request) {
-        try {
+    // Send email asynchronously
+    try {
+        dispatch(function () use ($quote, $request) {
             Mail::to($quote['email'])->send(
                 new QuoteAssignedMail(
                     $quote['name'],
                     $quote['phone'],
-                    $request->assigned_to,
-                    $quote['email'] // make sure your Mailable has this 4th param
+                    $request->assigned_to
                 )
             );
-        } catch (\Throwable $e) {
-            Log::error('Email sending failed', [
-                'quote_id' => $quote['id'] ?? null,
-                'email' => $quote['email'],
-                'error' => $e->getMessage()
-            ]);
-        }
-    })->afterResponse();
+        })->afterResponse();
+    } catch (\Throwable $e) {
+        // Log errors but do NOT echo anything
+        Log::error('Email sending failed', [
+            'quote_id' => $id,
+            'email'    => $quote['email'] ?? 'none',
+            'error'    => $e->getMessage(),
+        ]);
+    }
 
-    // 4️⃣ Return JSON immediately (frontend parses this)
+    // Return JSON immediately
     return response()->json([
         'success' => true,
-        'message' => 'Staff assigned successfully. Email is being sent in the background.'
+        'message' => 'Staff assigned successfully. Email will be sent asynchronously.'
     ]);
 }
+
 
     // Delete (archive) assigned quote
     public function destroy($id)

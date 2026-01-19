@@ -56,21 +56,10 @@ th, td { text-align:center; vertical-align: middle; word-break: break-word; }
               <td>{{ $req['phone'] ?? '' }}</td>
               <td id="status-{{ $id }}">{{ $req['status'] ?? 'pending' }}</td>
               <td>
-                <form class="assign-form"
-                      data-id="{{ $id }}"
-                      style="display:flex; gap:8px; justify-content:center; flex-wrap: wrap;">
-                  
+                <form class="assign-form" data-id="{{ $id }}" style="display:flex; gap:8px; justify-content:center; flex-wrap: wrap;">
                   @csrf
-
-                  <input type="text"
-                         name="assigned_to"
-                         placeholder="Staff name..."
-                         required
-                         style="padding:6px 8px; border-radius:5px; border:1px solid #dde3ec;">
-
-                  <button type="submit" class="btn btn-primary">
-                    Assign
-                  </button>
+                  <input type="text" name="assigned_to" placeholder="Staff name..." required style="padding:6px 8px; border-radius:5px; border:1px solid #dde3ec;">
+                  <button type="submit" class="btn btn-primary">Assign</button>
 
                   <div class="assign-success" id="assign-success-{{ $id }}">
                     Assigned successfully! Email sent.
@@ -109,35 +98,27 @@ document.addEventListener('DOMContentLoaded', function () {
             const formData = new FormData();
             formData.append('assigned_to', input.value);
 
+            // Hide messages
             successDiv.style.display = 'none';
             errorDiv.style.display = 'none';
 
             try {
                 const response = await fetch(`/admin/quote-requests/${id}/assign`, {
                     method: 'POST',
-                    headers: {
+                    headers: { 
                         'X-CSRF-TOKEN': csrfToken,
                         'Accept': 'application/json'
                     },
                     body: formData
                 });
 
-                const text = await response.text();
-let result;
-
-try {
-    result = JSON.parse(text);
-} catch (e) {
-    console.error("Invalid JSON response:", text);
-    alert("Server returned invalid response. Check controller.");
-    return;
-}
-
+                // ✅ Only parse JSON once
+                const result = await response.json();
 
                 if (result.success) {
                     document.getElementById(`status-${id}`).textContent = 'assigned';
 
-                    if (result.message && result.message.includes('email')) {
+                    if (result.message && result.message.toLowerCase().includes('email')) {
                         successDiv.style.display = 'block';
                     } else {
                         errorDiv.style.display = 'block';
@@ -145,6 +126,7 @@ try {
 
                     input.value = '';
 
+                    // Remove row after 2s
                     setTimeout(() => {
                         const row = document.getElementById(`quote-row-${id}`);
                         if (row) row.remove();
@@ -155,8 +137,8 @@ try {
                 }
 
             } catch (error) {
-                console.error(error);
-                alert('An error occurred.');
+                console.error('Error submitting assignment:', error);
+                alert('An error occurred. Please try again.');
             }
         });
     });
