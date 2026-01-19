@@ -6,13 +6,17 @@
 .quote-page-background {
     min-height: calc(100vh - 70px);
     padding: 80px 0;
-    background-image: url("{{ asset('image/requestform.jpeg') }}");
+    background-image: url("{{ secure_asset('image/requestform.jpeg') }}"); /* Force HTTPS */
     background-repeat: no-repeat;
     background-position: center;
     background-size: cover;
 }
 .quote-card {
-    padding:30px; border-radius:15px; background:#fff; box-shadow:0 6px 20px rgba(0,0,0,0.08); overflow-x:auto;
+    padding:30px;
+    border-radius:15px;
+    background:#fff;
+    box-shadow:0 6px 20px rgba(0,0,0,0.08);
+    overflow-x:auto;
 }
 table { width:100%; table-layout: fixed; }
 th, td { text-align:center; vertical-align:middle; word-break:break-word; }
@@ -49,7 +53,7 @@ th, td { text-align:center; vertical-align:middle; word-break:break-word; }
               <td>{{ $req['phone'] ?? '' }}</td>
               <td>{{ $req['assigned_to'] ?? '-' }}</td>
               <td>
-                <form action="{{ route('quote.delete', $id) }}" method="POST">
+                <form action="{{ url(route('quote.delete', $id), [], true) }}" method="POST"> <!-- Force HTTPS -->
                   @csrf
                   @method('DELETE')
                   <button type="submit" class="btn btn-danger btn-sm"
