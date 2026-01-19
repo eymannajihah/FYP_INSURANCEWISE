@@ -3,18 +3,16 @@
 @section('content')
 
 <style>
-/* ===== Page Background ===== */
 body {
     font-family: 'Poppins', sans-serif;
-    background-image: url("/image/requestform.jpeg"); /* relative path avoids HTTP/HTTPS issues */
+    background-image: url("/image/requestform.jpeg"); /* relative path */
     background-repeat: no-repeat;
     background-position: center center;
     background-size: cover;
     margin: 0;
-    padding-top: 80px; /* push content below navbar */
+    padding-top: 80px;
 }
 
-/* ===== Form Section ===== */
 .contact-section {
     display: flex;
     justify-content: center;
@@ -32,14 +30,12 @@ body {
     max-width: 500px;
 }
 
-/* ===== Headers ===== */
 .contact-container h2 {
     text-align: center;
     color: #d32f2f;
     margin-bottom: 30px;
 }
 
-/* ===== Form Inputs ===== */
 label {
     font-weight: 600;
     color: #555;
@@ -59,7 +55,6 @@ input:focus {
     border-color: #d32f2f;
 }
 
-/* ===== Submit Button ===== */
 .btn-submit {
     background-color: #d32f2f;
     color: white;
@@ -76,7 +71,6 @@ input:focus {
     background-color: #b71c1c;
 }
 
-/* ===== Success Message ===== */
 .success-message {
     margin-top: 15px;
     color: green;
@@ -84,7 +78,6 @@ input:focus {
     display: none;
 }
 
-/* ===== Responsive ===== */
 @media (max-width: 576px) {
     .contact-container {
         padding: 30px 20px;
@@ -92,11 +85,10 @@ input:focus {
 }
 </style>
 
-<!-- Form Section -->
 <div class="contact-section">
     <div class="contact-container">
         <h2>Get Your Quote</h2>
-        <form id="contactForm" action="{{ route('quote.submit') }}" method="POST">
+        <form id="contactForm" action="/quote-request" method="POST"> <!-- relative URL -->
             @csrf
             <label for="name">Full Name</label>
             <input type="text" id="name" name="name" placeholder="Your name..." required>
@@ -120,7 +112,7 @@ document.getElementById('contactForm').addEventListener('submit', async function
     const formData = new FormData(this);
 
     try {
-        // Use relative URL from form action
+        // Use relative URL so browser does not block HTTPS
         const response = await fetch(this.action, {
             method: 'POST',
             headers: {
@@ -129,11 +121,7 @@ document.getElementById('contactForm').addEventListener('submit', async function
             body: formData
         });
 
-        // Check for HTTP errors
-        if (!response.ok) throw new Error('Server error: ' + response.status);
-
-        // Parse JSON safely
-        const result = await response.json().catch(() => ({ success: false, error: 'Server returned invalid JSON' }));
+        const result = await response.json().catch(() => ({ success: false, error: 'Server error' }));
 
         if (result.success) {
             document.getElementById('successMessage').style.display = 'block';
@@ -141,7 +129,6 @@ document.getElementById('contactForm').addEventListener('submit', async function
         } else {
             alert(result.error || 'Something went wrong!');
         }
-
     } catch (error) {
         console.error('Error submitting form:', error);
         alert('An error occurred. Please try again.');
