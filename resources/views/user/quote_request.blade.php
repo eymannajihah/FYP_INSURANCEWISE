@@ -76,10 +76,16 @@ input:focus {
     background-color: #b71c1c;
 }
 
-/* ===== Success Message ===== */
+/* ===== Messages ===== */
 .success-message {
     margin-top: 15px;
     color: green;
+    text-align: center;
+    display: none;
+}
+.error-message {
+    margin-top: 15px;
+    color: red;
     text-align: center;
     display: none;
 }
@@ -108,7 +114,9 @@ input:focus {
             <input type="text" id="phone" name="phone" placeholder="Your phone number..." required>
 
             <button type="submit" class="btn-submit">Send Request</button>
+
             <p class="success-message" id="successMessage">Request sent successfully!</p>
+            <p class="error-message" id="errorMessage"></p>
         </form>
     </div>
 </div>
@@ -117,10 +125,19 @@ input:focus {
 document.getElementById('contactForm').addEventListener('submit', async function(e) {
     e.preventDefault();
 
-    const formData = new FormData(this);
+    const form = this;
+    const formData = new FormData(form);
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const successMessage = document.getElementById('successMessage');
+    const errorMessage = document.getElementById('errorMessage');
+
+    // Clear previous messages
+    successMessage.style.display = 'none';
+    errorMessage.style.display = 'none';
+    submitBtn.disabled = true;
 
     try {
-        const response = await fetch(this.action, {
+        const response = await fetch(form.action, {
             method: 'POST',
             headers: {
                 'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
@@ -132,14 +149,23 @@ document.getElementById('contactForm').addEventListener('submit', async function
         const result = await response.json().catch(() => ({ success: false, error: 'Server error' }));
 
         if (result.success) {
-            document.getElementById('successMessage').style.display = 'block';
-            this.reset();
+            successMessage.style.display = 'block';
+            form.reset();
         } else {
-            alert(result.error || 'Something went wrong!');
+            if (result.errors) {
+                // Show first validation error
+                errorMessage.textContent = Object.values(result.errors)[0];
+            } else {
+                errorMessage.textContent = result.error || 'Something went wrong!';
+            }
+            errorMessage.style.display = 'block';
         }
     } catch (error) {
         console.error('Error submitting form:', error);
-        alert('An error occurred. Please try again.');
+        errorMessage.textContent = 'An error occurred. Please try again.';
+        errorMessage.style.display = 'block';
+    } finally {
+        submitBtn.disabled = false;
     }
 });
 </script>
