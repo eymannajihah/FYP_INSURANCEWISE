@@ -2,20 +2,20 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Quote Request Assigned</title>
+    <title>Quote Assigned</title>
 </head>
-<body style="font-family: Arial, sans-serif; line-height: 1.6;">
+<body>
     <h2>Hello {{ $name }},</h2>
 
     <p>Your insurance quote request has been assigned to our staff member:</p>
 
-    <p><strong>{{ $assignedTo }}</strong></p>
+    <ul>
+        <li><strong>Staff Name:</strong> {{ $assignedTo }}</li>
+        <li><strong>Phone:</strong> {{ $phone }}</li>
+    </ul>
 
-    <p>They will contact you soon via your phone number: <strong>{{ $phone }}</strong></p>
+    <p>Please expect them to contact you shortly.</p>
 
-    <p>If you have any questions, reply to this email.</p>
-
-    <p>Best regards,</p>
-    <p><strong>InsuranceWise Team</strong></p>
+    <p>Thank you for using our service!</p>
 </body>
 </html>

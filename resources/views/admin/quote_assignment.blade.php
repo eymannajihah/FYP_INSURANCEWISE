@@ -122,7 +122,17 @@ document.addEventListener('DOMContentLoaded', function () {
                     body: formData
                 });
 
-                const result = await response.json();
+                const text = await response.text();
+let result;
+
+try {
+    result = JSON.parse(text);
+} catch (e) {
+    console.error("Invalid JSON response:", text);
+    alert("Server returned invalid response. Check controller.");
+    return;
+}
+
 
                 if (result.success) {
                     document.getElementById(`status-${id}`).textContent = 'assigned';
