@@ -6,7 +6,7 @@
 /* ===== Page Background ===== */
 body {
     font-family: 'Poppins', sans-serif;
-    background-image: url("/image/requestform.jpeg"); /* Use relative path */
+    background-image: url("/image/requestform.jpeg"); /* relative path avoids HTTP/HTTPS issue */
     background-repeat: no-repeat;
     background-position: center center;
     background-size: cover;
@@ -20,7 +20,7 @@ body {
     justify-content: center;
     align-items: flex-start;
     padding: 60px 20px;
-    min-height: calc(100vh - 80px); /* full height minus navbar */
+    min-height: calc(100vh - 80px);
 }
 
 .contact-container {
@@ -96,7 +96,7 @@ input:focus {
 <div class="contact-section">
     <div class="contact-container">
         <h2>Get Your Quote</h2>
-        <form id="contactForm" action="{{ route('quote.submit') }}" method="POST">
+        <form id="contactForm" action="/quote-request" method="POST">
             @csrf
             <label for="name">Full Name</label>
             <input type="text" id="name" name="name" placeholder="Your name..." required>
@@ -120,7 +120,8 @@ document.getElementById('contactForm').addEventListener('submit', async function
     const formData = new FormData(this);
 
     try {
-        const response = await fetch(this.action, { // <-- use form action
+        // Use relative URL to avoid mixed content
+        const response = await fetch(this.action, {
             method: 'POST',
             headers: {
                 'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value
@@ -128,7 +129,8 @@ document.getElementById('contactForm').addEventListener('submit', async function
             body: formData
         });
 
-        const result = await response.json();
+        // Parse JSON safely
+        const result = await response.json().catch(() => ({ success: false, error: 'Server error' }));
 
         if (result.success) {
             document.getElementById('successMessage').style.display = 'block';
