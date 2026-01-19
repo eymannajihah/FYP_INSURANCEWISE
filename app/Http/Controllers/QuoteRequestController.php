@@ -91,7 +91,7 @@ class QuoteRequestController extends Controller
         ], 404);
     }
 
-    // Update Firebase first
+    // 1️⃣ Update Firebase FIRST (fast)
     $ref->update([
         'assigned_to' => $request->assigned_to,
         'status'      => 'assigned',
@@ -99,25 +99,28 @@ class QuoteRequestController extends Controller
         'updated_at'  => now()->toDateTimeString(),
     ]);
 
-    // Send email via Gmail SMTP
-    try {
-        Mail::send(new \App\Mail\QuoteAssignedMail(
-            $quote['name'],
-            $quote['phone'],
-            $request->assigned_to,
-            $quote['email'] // ✅ send to user's email
-        ));
-    } catch (\Exception $e) {
-        Log::error('Email sending failed', [
-            'quote_id' => $id,
-            'email'    => $quote['email'],
-            'error'    => $e->getMessage(),
-        ]);
-    }
+    // 2️⃣ Send email AFTER response (non-blocking)
+    dispatch(function () use ($quote, $request) {
+        try {
+            Mail::to($quote['email'])->send(
+                new QuoteAssignedMail(
+                    $quote['name'],
+                    $quote['phone'],
+                    $request->assigned_to
+                )
+            );
+        } catch (\Throwable $e) {
+            Log::error('Email failed', [
+                'email' => $quote['email'],
+                'error' => $e->getMessage()
+            ]);
+        }
+    })->afterResponse();
 
+    // 3️⃣ Return immediately
     return response()->json([
         'success' => true,
-        'message' => 'Staff assigned successfully and email sent to user'
+        'message' => 'Staff assigned successfully'
     ]);
 }
 
