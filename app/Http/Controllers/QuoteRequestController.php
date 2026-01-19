@@ -107,11 +107,12 @@ class QuoteRequestController extends Controller
 
         // Send email
         try {
-            Mail::to($quote['email'])->send(new QuoteAssignedMail(
-                $quote['name'],
-                $quote['phone'],
-                $request->assigned_to
-            ));
+           Mail::to($quote['email'])
+    ->queue(new QuoteAssignedMail(
+        $quote['name'],
+        $quote['phone'],
+        $request->assigned_to
+    ));
         } catch (\Exception $e) {
             Log::error('Failed to send quote assigned email: '.$e->getMessage());
         }
