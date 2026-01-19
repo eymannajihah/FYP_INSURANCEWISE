@@ -115,7 +115,7 @@ if ($data['goal'] === 'medical') {
         'PRUMillion Med' => ['price' => 'Price depends on plan & deductible', 'desc' => 'Hospital and surgical coverage with cashless admission at selected hospitals and flexible benefit options.'],
         'PRUMillion Med Active' => ['price' => 'Price depends on plan & deductible', 'desc' => 'Ideal for active lifestyles: hospital coverage with added flexibility for day-to-day medical needs.'],
         'PRUValue Med' => ['price' => 'Price depends on age & selected options', 'desc' => 'Long-term hospitalisation and surgical plan with high coverage limits and optional add-ons for peace of mind.'],
-        'PRULive Well' => ['price' => 'Varies by options selected', 'desc' => 'Investment-linked life plan with wellness rewards, promoting healthier lifestyle and financial protection.'],
+        'PRULive Well' => ['price' => 'Varies by options selected', 'desc' => 'An investment-linked life plan that provides financial protection and rewards for maintaining a healthier lifestyle. It is designed for people seeking long-term protection and wellness benefits, especially if they have existing health concerns.'],
     ];
 
     // Return to Blade view
