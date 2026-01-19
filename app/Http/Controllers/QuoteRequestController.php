@@ -75,7 +75,7 @@ class QuoteRequestController extends Controller
     }
 
     // Assign staff to a quote (AJAX POST)
-   public function assign(Request $request, $id)
+  public function assign(Request $request, $id)
 {
     $request->validate([
         'assigned_to' => 'required|string|max:255',
@@ -91,7 +91,7 @@ class QuoteRequestController extends Controller
         ], 404);
     }
 
-    // 1️⃣ Update Firebase immediately
+    // Update Firebase first
     $ref->update([
         'assigned_to' => $request->assigned_to,
         'status'      => 'assigned',
@@ -99,25 +99,25 @@ class QuoteRequestController extends Controller
         'updated_at'  => now()->toDateTimeString(),
     ]);
 
-    // 2️⃣ Queue the email (do NOT block assignment)
+    // Send email via Gmail SMTP
     try {
-        Mail::to($quote['email'])->queue(
-            new QuoteAssignedMail(
-                $quote['name'],
-                $quote['phone'],
-                $request->assigned_to
-            )
-        );
-
-        Log::info("Queued email to {$quote['email']} for assigned staff {$request->assigned_to}");
+        Mail::send(new \App\Mail\QuoteAssignedMail(
+            $quote['name'],
+            $quote['phone'],
+            $request->assigned_to,
+            $quote['email'] // ✅ send to user's email
+        ));
     } catch (\Exception $e) {
-        Log::error("Failed to queue email to {$quote['email']}: ".$e->getMessage());
+        Log::error('Email sending failed', [
+            'quote_id' => $id,
+            'email'    => $quote['email'],
+            'error'    => $e->getMessage(),
+        ]);
     }
 
-    // 3️⃣ Respond immediately to frontend
     return response()->json([
         'success' => true,
-        'message' => 'Staff assigned successfully. Email will be sent shortly.'
+        'message' => 'Staff assigned successfully and email sent to user'
     ]);
 }
 
