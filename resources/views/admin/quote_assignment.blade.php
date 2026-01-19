@@ -33,12 +33,10 @@ th, td { text-align:center; vertical-align: middle; word-break: break-word; }
       </div>
 
       <div class="d-flex justify-content-end mb-3">
-        <a href="{{ route('quote.assigned') }}" class="btn btn-outline-primary">View Assigned Requests</a>
+        <a href="{{ route('quote.assigned') }}" class="btn btn-outline-primary">
+          View Assigned Requests
+        </a>
       </div>
-
-      @if(session('success'))
-        <div class="alert alert-success">{{ session('success') }}</div>
-      @endif
 
       <table class="table table-bordered">
         <thead>
@@ -58,12 +56,29 @@ th, td { text-align:center; vertical-align: middle; word-break: break-word; }
               <td>{{ $req['phone'] ?? '' }}</td>
               <td id="status-{{ $id }}">{{ $req['status'] ?? 'pending' }}</td>
               <td>
-                <form class="assign-form" data-id="{{ $id }}" style="display:flex; gap:8px; justify-content:center; flex-wrap: wrap;">
+                <form class="assign-form"
+                      data-id="{{ $id }}"
+                      style="display:flex; gap:8px; justify-content:center; flex-wrap: wrap;">
+                  
                   @csrf
-                  <input type="text" name="assigned_to" placeholder="Staff name..." required style="padding:6px 8px; border-radius:5px; border:1px solid #dde3ec;">
-                  <button type="submit" class="btn btn-danger btn-sm">Assign</button>
-                  <div class="assign-success" id="assign-success-{{ $id }}">Assigned successfully! Email sent.</div>
-                  <div class="assign-error" id="assign-error-{{ $id }}">Assignment succeeded but email failed.</div>
+
+                  <input type="text"
+                         name="assigned_to"
+                         placeholder="Staff name..."
+                         required
+                         style="padding:6px 8px; border-radius:5px; border:1px solid #dde3ec;">
+
+                  <button type="submit" class="btn btn-primary">
+                    Assign
+                  </button>
+
+                  <div class="assign-success" id="assign-success-{{ $id }}">
+                    Assigned successfully! Email sent.
+                  </div>
+
+                  <div class="assign-error" id="assign-error-{{ $id }}">
+                    Assigned successfully but email failed.
+                  </div>
                 </form>
               </td>
             </tr>
@@ -80,10 +95,11 @@ th, td { text-align:center; vertical-align: middle; word-break: break-word; }
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.assign-form').forEach(form => {
-        form.addEventListener('submit', async function(e) {
+        form.addEventListener('submit', async function (e) {
             e.preventDefault();
+
             const id = this.dataset.id;
             const input = this.querySelector('input[name="assigned_to"]');
             const successDiv = document.getElementById(`assign-success-${id}`);
@@ -93,10 +109,13 @@ document.addEventListener('DOMContentLoaded', function() {
             const formData = new FormData();
             formData.append('assigned_to', input.value);
 
+            successDiv.style.display = 'none';
+            errorDiv.style.display = 'none';
+
             try {
                 const response = await fetch(`/admin/quote-requests/${id}/assign`, {
                     method: 'POST',
-                    headers: { 
+                    headers: {
                         'X-CSRF-TOKEN': csrfToken,
                         'Accept': 'application/json'
                     },
@@ -105,32 +124,33 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 const result = await response.json();
 
-                if(result.success){
-                    // Show success or error based on email sending
-                    if(result.message && result.message.includes('Email sent')){
+                if (result.success) {
+                    document.getElementById(`status-${id}`).textContent = 'assigned';
+
+                    if (result.message && result.message.includes('email')) {
                         successDiv.style.display = 'block';
-                        errorDiv.style.display = 'none';
                     } else {
-                        successDiv.style.display = 'none';
                         errorDiv.style.display = 'block';
                     }
 
-                    // Update status and remove from table after short delay
-                    document.getElementById(`status-${id}`).textContent = 'assigned';
                     input.value = '';
+
                     setTimeout(() => {
                         const row = document.getElementById(`quote-row-${id}`);
-                        if(row) row.remove();
+                        if (row) row.remove();
                     }, 2000);
+
                 } else {
                     alert(result.error || 'Failed to assign staff.');
                 }
-            } catch(e){
-                console.error(e);
+
+            } catch (error) {
+                console.error(error);
                 alert('An error occurred.');
             }
         });
     });
 });
 </script>
+
 @endsection
