@@ -68,7 +68,7 @@ th, td { text-align:center; vertical-align: middle; word-break: break-word; }
                   <button type="submit" class="btn btn-primary">Assign</button>
 
                   <div class="assign-success" id="assign-success-{{ $id }}">
-                    Assigned successfully! Email sent.
+                    Assigned successfully! 
                   </div>
 
                   <div class="assign-error" id="assign-error-{{ $id }}">

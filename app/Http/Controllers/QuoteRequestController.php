@@ -95,58 +95,56 @@ class QuoteRequestController extends Controller
      * Admin – Assign staff to quote (AJAX)
      */
     public function assign(Request $request, $id)
-    {
-        $request->validate([
-            'assigned_to' => 'required|string|max:255',
-        ]);
+{
+    $request->validate([
+        'assigned_to' => 'required|string|max:255',
+    ]);
 
-        $ref   = $this->database->getReference("quote_requests/{$id}");
-        $quote = $ref->getValue();
+    $ref = $this->database->getReference("quote_requests/{$id}");
+    $quote = $ref->getValue();
 
-        if (!$quote) {
-            return response()->json([
-                'success' => false,
-                'error'   => 'Quote request not found.'
-            ], 404);
-        }
-
-        // ✅ Update Firebase FIRST (fast)
-        $ref->update([
-            'assigned_to' => $request->assigned_to,
-            'status'      => 'assigned',
-            'assigned_at' => now()->toDateTimeString(),
-            'updated_at'  => now()->toDateTimeString(),
-        ]);
-
-        /**
-         * ✅ Send email AFTER response
-         * ❌ No dispatch()
-         * ❌ No closure serialization
-         * ❌ No CurlHandle issues
-         */
-        App::terminating(function () use ($quote, $request) {
-            try {
-                Mail::to($quote['email'])->send(
-                    new QuoteAssignedMail(
-                        $quote['name'],
-                        $quote['phone'],
-                        $request->assigned_to
-                    )
-                );
-            } catch (\Throwable $e) {
-                Log::error('Quote assignment email failed', [
-                    'email' => $quote['email'] ?? 'unknown',
-                    'error' => $e->getMessage(),
-                ]);
-            }
-        });
-
-        // ✅ CLEAN JSON RESPONSE (no corruption)
+    if (!$quote) {
         return response()->json([
-            'success' => true,
-            'message' => 'Staff assigned successfully. Email will be sent shortly.'
+            'success' => false,
+            'error'   => 'Quote request not found.'
+        ], 404);
+    }
+
+    // 1️⃣ Update Firebase (THIS PART IS ALREADY WORKING)
+    $ref->update([
+        'assigned_to' => $request->assigned_to,
+        'status'      => 'assigned',
+        'assigned_at' => now()->toDateTimeString(),
+        'updated_at'  => now()->toDateTimeString(),
+    ]);
+
+    // 2️⃣ SEND EMAIL (SYNC — NO QUEUE, NO DISPATCH)
+    try {
+        Mail::to($quote['email'])->send(
+            new QuoteAssignedMail(
+                $quote['name'],
+                $quote['phone'],
+                $request->assigned_to
+            )
+        );
+
+        Log::info('Quote email sent', [
+            'email' => $quote['email']
+        ]);
+
+    } catch (\Throwable $e) {
+        Log::error('Quote email failed', [
+            'email' => $quote['email'],
+            'error' => $e->getMessage(),
         ]);
     }
+
+    // 3️⃣ RETURN RESPONSE
+    return response()->json([
+        'success' => true,
+        'message' => 'Staff assigned successfully.'
+    ]);
+}
 
     /**
      * Admin – Archive (soft delete)
