@@ -111,19 +111,19 @@ document.querySelectorAll('.assign-form').forEach(form => {
         formData.append('assigned_to', input.value);
 
         try {
+            // 🔹 Correct AJAX URL matching AdminController@assignQuote
             const response = await fetch(`/admin/quote/assign/${id}`, {
-    method: 'POST',
-    headers: {
-        'X-CSRF-TOKEN': csrfToken
-    },
-    body: formData
-});
-
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken
+                },
+                body: formData
+            });
 
             const result = await response.json().catch(() => ({ success: false, error: 'Server error' }));
 
-            if (result.success !== false) {
-                // Show success message and update status
+            if (result.success) {
+                // Show success message, update status, clear input
                 successDiv.style.display = 'block';
                 document.getElementById(`status-${id}`).textContent = 'assigned';
                 input.value = '';

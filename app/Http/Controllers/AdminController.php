@@ -341,28 +341,23 @@ public function editPlan(Request $request, $id)
 
     public function assignQuote(Request $request, $id)
 {
-    $check = $this->checkAdmin();
-    if ($check instanceof \Illuminate\Http\RedirectResponse) return $check;
-
     $request->validate([
         'assigned_to' => 'required|string'
     ]);
 
-    // Get quote request from Firebase
     $quoteRef = $this->database->getReference("quote_requests/{$id}");
     $quote = $quoteRef->getValue();
 
     if (!$quote) {
-        return redirect()->back()->withErrors(['not_found' => 'Quote request not found.']);
+        return response()->json(['success' => false, 'error' => 'Quote request not found.']);
     }
 
-    // Update assignment + status
     $quoteRef->update([
         'assigned_to' => $request->assigned_to,
         'status' => 'assigned'
     ]);
 
-    // ✅ Send email to user
+    // Send email
     Mail::to($quote['email'])->send(
         new QuoteAssignedMail(
             $quote['name'],
